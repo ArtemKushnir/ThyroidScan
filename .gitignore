@@ -5,3 +5,6 @@ __pycache__/
 .ipynb_checkpoints/
 .hypothesis/
 .env/
+src/data_processing/xml_files
+src/data_processing/masks
+src/data_processing/images
