@@ -1,27 +1,30 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
-import pandas as pd
 import numpy as np
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.decomposition import PCA
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import PolynomialFeatures
 
 
 class TrigonometricFeatures(BaseEstimator, TransformerMixin):
-    def __init__(self, is_add_sum: bool=False, is_add_product: bool=False, keep_original: bool=True) -> None:
+    def __init__(self, is_add_sum: bool = False, is_add_product: bool = False, keep_original: bool = True) -> None:
         self.is_add_sum = is_add_sum
         self.is_add_product = is_add_product
         self.keep_original = keep_original
 
-    def fit(self, X: pd.DataFrame | np.ndarray, y: Optional[pd.DataFrame | np.ndarray]=None) -> "TrigonometricFeatures":
+    def fit(
+        self, X: pd.DataFrame | np.ndarray, y: Optional[pd.DataFrame | np.ndarray] = None
+    ) -> "TrigonometricFeatures":
         return self
 
     def transform(self, X: pd.DataFrame | np.ndarray) -> pd.DataFrame | np.ndarray:
         input_is_dataframe = isinstance(X, pd.DataFrame)
 
         if input_is_dataframe:
-            column_names = X.columns
-            X_values = X.values
+            X_df = cast(pd.DataFrame, X)
+            column_names = X_df.columns
+            X_values = X_df.values
         else:
             X_values = X
 
@@ -55,6 +58,7 @@ class TrigonometricFeatures(BaseEstimator, TransformerMixin):
                 col_idx += 1
 
         if input_is_dataframe:
+            X_df = cast(pd.DataFrame, X)
             new_columns = []
             for col in column_names:
                 if self.keep_original:
@@ -65,24 +69,26 @@ class TrigonometricFeatures(BaseEstimator, TransformerMixin):
                     new_columns.append(f"{col}_sin_cos_sum")
                 if self.is_add_product:
                     new_columns.append(f"{col}_sin_cos_product")
-            return pd.DataFrame(X_new, columns=new_columns, index=X.index)
+            return pd.DataFrame(X_new, columns=new_columns, index=X_df.index)
 
         return X_new
 
-    def fit_transform(self, X: pd.DataFrame | np.ndarray, y: Optional[pd.DataFrame | np.ndarray]=None, **fit_params: Any) -> pd.DataFrame | np.ndarray:
+    def fit_transform(
+        self, X: pd.DataFrame | np.ndarray, y: Optional[pd.DataFrame | np.ndarray] = None, **fit_params: Any
+    ) -> pd.DataFrame | np.ndarray:
         self.fit(X)
         return self.transform(X)
 
 
 class FeaturesTransform:
-    def __init__(self, X_train: pd.DataFrame, X_test: pd.DataFrame, columns=None) -> None:
+    def __init__(self, X_train: pd.DataFrame, X_test: pd.DataFrame, columns: list[str] = None) -> None:
         if X_train.columns != X_test.columns:
             raise ValueError("the columns in X_train and X_test are different")
         self.columns = columns if columns is not None else X_train.columns
         self.X_train = X_train
         self.X_test = X_test
 
-    def perform_poly(self, degree: int=2) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def perform_poly(self, degree: int = 2) -> tuple[pd.DataFrame, pd.DataFrame]:
         X_train_selected = self.X_train[self.columns] if self.columns is not None else self.X_train
         X_test_selected = self.X_test[self.columns] if self.columns is not None else self.X_test
 
@@ -101,20 +107,22 @@ class FeaturesTransform:
             if col in feature_names:
                 columns_to_drop.append(col)
 
-        train_poly_df = train_poly_df.drop(columns=columns_to_drop, errors='ignore')
-        test_poly_df = test_poly_df.drop(columns=columns_to_drop, errors='ignore')
+        train_poly_df = train_poly_df.drop(columns=columns_to_drop, errors="ignore")
+        test_poly_df = test_poly_df.drop(columns=columns_to_drop, errors="ignore")
 
         X_train_result = pd.concat([self.X_train, train_poly_df], axis=1)
         X_test_result = pd.concat([self.X_test, test_poly_df], axis=1)
 
         return X_train_result, X_test_result
 
-    def perform_pca(self, n_components: Optional[int]=None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def perform_pca(self, n_components: Optional[int] = None) -> tuple[pd.DataFrame, pd.DataFrame]:
         pca = PCA() if n_components is None else PCA(n_components)
         pca.fit(self.X_train)
         return pca.transform(self.X_train), pca.transform(self.X_test)
 
-    def preform_trigonometry(self, is_add_sum: bool=False, is_add_product: bool=False) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def preform_trigonometry(
+        self, is_add_sum: bool = False, is_add_product: bool = False
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         X_train_selected = self.X_train[self.columns] if self.columns is not None else self.X_train
         X_test_selected = self.X_test[self.columns] if self.columns is not None else self.X_test
 
