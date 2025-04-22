@@ -4,7 +4,8 @@ from pathlib import Path
 
 def split_files_by_type(data_dir: str, xml_dir: str = "xml_files", images_dir: str = "images") -> None:
     """
-    Divides the directory with xml and jpg files into two directories
+    Divides the directory with xml and jpg files into two directories.
+
     :param data_dir: directory with data.
     :param xml_dir: directory with xml files.
     :param images_dir: directory with images.
