@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Optional
+from typing import Any, Optional
 
 import cv2
 import numpy as np
@@ -15,7 +15,7 @@ class Cropper(BaseEstimator, TransformerMixin):
     def __init__(self, crop_radius: int = 10) -> None:
         self.crop_radius = self._validate_radius(crop_radius)
 
-    def fit(self, image_list: list[Image], target=None):
+    def fit(self, image_list: list[Image], target: Any = None) -> "Cropper":
         return self
 
     def transform(self, image_list: list[Image]) -> list[Image]:
@@ -78,12 +78,12 @@ class Cropper(BaseEstimator, TransformerMixin):
         return [left_image, right_image]
 
     @staticmethod
-    def _check_for_double(cropped_image) -> Optional[tuple[NDArray, NDArray]]:
+    def _check_for_double(cropped_image: NDArray) -> Optional[tuple[NDArray, NDArray]]:
         gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
 
         sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
         sobel_x = np.absolute(sobel_x)
-        sobel_x = np.uint8(255 * sobel_x / np.max(sobel_x))
+        sobel_x = (255 * sobel_x / np.max(sobel_x)).astype(np.uint8)
 
         column_edges = np.sum(sobel_x, axis=0)
         peak_arg = np.argmax(column_edges)
