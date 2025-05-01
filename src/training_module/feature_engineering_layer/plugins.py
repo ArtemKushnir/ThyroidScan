@@ -1,25 +1,24 @@
 import abc
 
+import pandas as pd
+
 from src.image_data.image_data import Image
 
 
-class Plugin(abc.ABC):
+class FeaturePlugin(abc.ABC):
     @abc.abstractmethod
-    def transform(self, image: Image) -> dict[str, float]:
+    def extract(self, image: Image) -> dict[str, float]:
         pass
 
 
-class TransformPlugin(Plugin):
-    """Class for applying various data conversion plugins"""
+class TransformPlugin(abc.ABC):
+    def __init__(self) -> None:
+        self._is_fit = False
 
     @abc.abstractmethod
-    def fit(self, images: list[Image]) -> None:
+    def fit(self, df: pd.DataFrame) -> None:
         pass
 
     @abc.abstractmethod
-    def save(self, path: str) -> None:
+    def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         pass
-
-
-class FeaturePlugin(Plugin):
-    pass

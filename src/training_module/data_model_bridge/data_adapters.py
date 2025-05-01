@@ -1,28 +1,24 @@
 import abc
-from typing import Any
+from typing import Any, Optional, Type, Union
 
 import numpy as np
 from monai.transforms import Compose, RandFlip, RandGaussianNoise
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
 
 from src.image_data.image_data import Image
-from src.training_module.data_model_bridge.image_dataset import ImageDataset
+from src.training_module.data_model_bridge.pytorch_datasets import HybridDataset, ImageDataset
+
+CustomDataset = Union[HybridDataset, ImageDataset]
 
 
 class BaseDataAdapter(abc.ABC):
-    """Convert list[Images] to the desired format
-    Splitting the dataset into train and test
-    """
+    """Convert list[Images] to the desired format"""
 
-    def __init__(self, images: list[Image], is_bin_classification: bool = True, test_size: float = 0.2) -> None:
+    def __init__(self, images: list[Image], is_bin_classification: bool = True) -> None:
         self.images: list[Image] = images
-        self.test_size: float = test_size
         self._is_bin_classification: bool = is_bin_classification
         self._preprocessed: bool = False
-        self._train_data: Any = None
-        self._test_data: Any = None
+        self._data: Any = None
         self._check_constraint_images()
         self._convert_image_labels()
 
@@ -30,13 +26,9 @@ class BaseDataAdapter(abc.ABC):
     def prepare(self) -> None:
         pass
 
-    @abc.abstractmethod
-    def get_train_data(self) -> Any:
-        pass
-
-    @abc.abstractmethod
-    def get_test_data(self) -> Any:
-        pass
+    @property
+    def data(self) -> Any:
+        return self._data
 
     def _is_prepare(self) -> None:
         if not self._preprocessed:
@@ -73,59 +65,37 @@ class SklearnDataAdapter(BaseDataAdapter):
         X = np.array([img.features.values() for img in self.images])  # type: ignore
         y = np.array([self._convert_tirads(img.metadata["tirads"]) for img in self.images])  # type: ignore
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=self.test_size, stratify=y)
-
-        scaler = StandardScaler()
-        scaler.fit(X_train)
-        self._train_data = (scaler.transform(X_train), y_train)
-        self._test_data = (scaler.transform(X_test), y_test)
+        self._data = (X, y)
         self._preprocessed = True
-
-    def get_train_data(self) -> Any:
-        self._is_prepare()
-        return self._train_data
-
-    def get_test_data(self) -> Any:
-        self._is_prepare()
-        return self._test_data
 
 
 class PytorchDataAdapter(BaseDataAdapter):
-    """DataAdapter for pytorch compatible models"""
+    dataset_cls: Optional[Type[CustomDataset]] = None
 
-    def __init__(self, batch_size: int = 8, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, batch_size: int, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.batch_size: int = batch_size
+        self.batch_size = batch_size
         self.transforms: Compose = Compose(
             [RandFlip(spatial_axis=1, prob=0.5), RandGaussianNoise(prob=0.2, mean=0.0, std=0.1)]
         )
 
     def prepare(self) -> None:
-        train_idx, test_idx = train_test_split(
-            range(len(self.images)), test_size=self.test_size, stratify=[img.metadata["tirads"] for img in self.images]  # type: ignore
-        )
+        if self.dataset_cls is None:
+            raise ValueError("Missing dataset")
+        dataset = self.dataset_cls(images=self.images, transform=self.transforms)
+        self._data = DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True)
 
-        self._train_data = ImageDataset(images=[self.images[i] for i in train_idx], transform=self.transforms)
 
-        self._test_data = ImageDataset(
-            images=[self.images[i] for i in test_idx],
-        )
+class ImageDataAdapter(PytorchDataAdapter):
+    dataset_cls = ImageDataset
 
-    def get_train_data(self) -> Any:
-        return DataLoader(dataset=self._train_data, batch_size=self.batch_size, shuffle=True)
 
-    def get_test_data(self) -> Any:
-        return DataLoader(
-            dataset=self._test_data,
-            batch_size=self.batch_size,
-        )
+class PytorchHybridDataAdapter(PytorchDataAdapter):
+    dataset_cls = HybridDataset
 
 
 class DataAdapterFactory:
     @staticmethod
     def create(adapter_type: str, **kwargs: Any) -> BaseDataAdapter:
-        adapters = {
-            "sklearn": SklearnDataAdapter,
-            "pytorch": PytorchDataAdapter,
-        }
+        adapters = {"sklearn": SklearnDataAdapter, "hybrid": PytorchHybridDataAdapter, "image": ImageDataAdapter}
         return adapters[adapter_type](**kwargs)
