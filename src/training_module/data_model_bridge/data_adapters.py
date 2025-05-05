@@ -1,5 +1,5 @@
 import abc
-from typing import Any, Optional, Type, Union
+from typing import Any, Callable, Optional, Type, Union
 
 import numpy as np
 from monai.transforms import Compose, RandFlip, RandGaussianNoise
@@ -11,16 +11,38 @@ from src.training_module.data_model_bridge.pytorch_datasets import HybridDataset
 CustomDataset = Union[HybridDataset, ImageDataset]
 
 
+class DataAdapterFactory:
+    _registry: dict = {}
+
+    @classmethod
+    def register(cls, adapter_type: str) -> Callable[[Type], Type]:
+        def decorator(data_adapter_cls: Type) -> Type:
+            if adapter_type in cls._registry:
+                raise ValueError(f"DataAdapter '{adapter_type}' already registered")
+            cls._registry[adapter_type] = data_adapter_cls
+            return data_adapter_cls
+
+        return decorator
+
+    @classmethod
+    def create(cls, adapter_type: str, **kwargs: Any) -> "BaseDataAdapter":
+        if adapter_type not in cls._registry:
+            raise ValueError(f"DataAdapter {adapter_type} is not registered")
+        return cls._registry[adapter_type](**kwargs)
+
+
 class BaseDataAdapter(abc.ABC):
     """Convert list[Images] to the desired format"""
 
-    def __init__(self, images: list[Image], is_bin_classification: bool = True) -> None:
+    def __init__(self, images: list[Image], is_bin_classification: bool = True, label: bool = True) -> None:
         self.images: list[Image] = images
         self._is_bin_classification: bool = is_bin_classification
         self._preprocessed: bool = False
         self._data: Any = None
+        self.label: bool = label
         self._check_constraint_images()
-        self._convert_image_labels()
+        if label:
+            self._convert_image_labels()
 
     @abc.abstractmethod
     def prepare(self) -> None:
@@ -58,13 +80,16 @@ class BaseDataAdapter(abc.ABC):
                 raise ValueError("Missing metadata")
 
 
+@DataAdapterFactory.register("sklearn")
 class SklearnDataAdapter(BaseDataAdapter):
     """DataAdapter for sklearn compatible models"""
 
     def prepare(self) -> None:
         X = np.array([img.features.values() for img in self.images])  # type: ignore
-        y = np.array([self._convert_tirads(img.metadata["tirads"]) for img in self.images])  # type: ignore
-
+        if self.label:
+            y = np.array([self._convert_tirads(img.metadata["tirads"]) for img in self.images])  # type: ignore
+        else:
+            y = None
         self._data = (X, y)
         self._preprocessed = True
 
@@ -82,20 +107,15 @@ class PytorchDataAdapter(BaseDataAdapter):
     def prepare(self) -> None:
         if self.dataset_cls is None:
             raise ValueError("Missing dataset")
-        dataset = self.dataset_cls(images=self.images, transform=self.transforms)
+        dataset = self.dataset_cls(images=self.images, transform=self.transforms, label=self.label)
         self._data = DataLoader(dataset=dataset, batch_size=self.batch_size, shuffle=True)
 
 
+@DataAdapterFactory.register("image")
 class ImageDataAdapter(PytorchDataAdapter):
     dataset_cls = ImageDataset
 
 
+@DataAdapterFactory.register("hybrid")
 class PytorchHybridDataAdapter(PytorchDataAdapter):
     dataset_cls = HybridDataset
-
-
-class DataAdapterFactory:
-    @staticmethod
-    def create(adapter_type: str, **kwargs: Any) -> BaseDataAdapter:
-        adapters = {"sklearn": SklearnDataAdapter, "hybrid": PytorchHybridDataAdapter, "image": ImageDataAdapter}
-        return adapters[adapter_type](**kwargs)

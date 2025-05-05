@@ -38,20 +38,34 @@ class PytorchDatasetMixin:
 
 
 class HybridDataset(Dataset, PytorchDatasetMixin):
-    def __init__(self, images: list[Image], transform: Optional[Callable] = None) -> None:
+    def __init__(self, images: list[Image], transform: Optional[Callable] = None, label: bool = True) -> None:
         PytorchDatasetMixin.__init__(self, images, transform)
+        self.label: bool = label
 
     def __getitem__(self, index: int) -> dict[str, Any]:
+        if self.label:
+            return {
+                "pixels": self._get_pixels(index),
+                "features": self._get_features(index),
+                "label": self._get_label(index),
+            }
         return {
             "pixels": self._get_pixels(index),
             "features": self._get_features(index),
-            "label": self._get_label(index),
         }
 
 
 class ImageDataset(Dataset, PytorchDatasetMixin):
-    def __init__(self, images: list[Image], transform: Optional[Callable] = None) -> None:
+    def __init__(self, images: list[Image], transform: Optional[Callable] = None, label: bool = True) -> None:
         PytorchDatasetMixin.__init__(self, images, transform)
+        self.label: bool = label
 
     def __getitem__(self, index: int) -> dict[str, Any]:
-        return {"pixels": self._get_pixels(index), "label": self._get_label(index)}
+        if self.label:
+            return {
+                "pixels": self._get_pixels(index),
+                "label": self._get_label(index),
+            }
+        return {
+            "pixels": self._get_pixels(index),
+        }
