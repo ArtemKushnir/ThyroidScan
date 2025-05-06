@@ -4,3 +4,10 @@ matplotlib~=3.10.0
 scikit-image~=0.25.0
 scikit-learn~=1.6.1
 pandas~=2.2.3
+torch==2.6.0
+monai==1.4.0
+optuna==4.3.0
+catboost==1.2.8
+xgboost==3.0.0
+lightgbm==4.6.0
+pytorch_toolbelt==0.8.0
