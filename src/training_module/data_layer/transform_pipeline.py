@@ -34,7 +34,7 @@ class TransformPipeline:
     def _get_df(self, images: list[Image]) -> pd.DataFrame:
         df = pd.DataFrame([image.features for image in images])
         if self.is_label:
-            df["tirads"] = np.array([image.metadata["tirads"] for image in images]) # type: ignore
+            df["tirads"] = np.array([image.metadata["tirads"] for image in images])  # type: ignore
         return df
 
     @staticmethod
