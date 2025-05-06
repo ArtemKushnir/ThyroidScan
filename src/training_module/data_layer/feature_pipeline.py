@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
 from src.image_data.image_data import Image
+from src.training_module.feature_engineering_layer.feature_plugins import FeaturePlugin
 from src.training_module.feature_engineering_layer.plugin_registry import FeatureRegistry
-from src.training_module.feature_engineering_layer.plugins import FeaturePlugin
 
 
 class FeaturePipeline:

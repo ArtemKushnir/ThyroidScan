@@ -2,25 +2,19 @@ import abc
 import copy
 import os
 import pickle
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
 import torch.nn as nn
-from catboost import CatBoostClassifier
-from lightgbm import LGBMClassifier
-from sklearn import clone
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
-from sklearn.svm import SVC
 from torch.utils.data import DataLoader
-from xgboost import XGBClassifier
 
 from src.training_module import root_loger
-from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter, DataAdapterFactory
-from src.training_module.model_core.criterions import BINARY_CRITERION, MULTICLASS_CRITERION
-from src.training_module.model_core.optimizers import OPTIMIZER
+from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter
+from src.training_module.model_core.torch_models.criterions import BINARY_CRITERION, MULTICLASS_CRITERION
+from src.training_module.model_core.torch_models.optimizers import OPTIMIZER
 from src.training_module.model_core.tuners import BaseTuner
 
 
@@ -59,6 +53,7 @@ class BaseModel(abc.ABC):
     @abc.abstractmethod
     def get_clone_model(self, params: dict[str, Any]) -> Any:
         pass
+
     @abc.abstractmethod
     def save(self, path: str) -> None:
         pass
@@ -147,47 +142,11 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         with open(path, "rb") as f:
             return pickle.load(f)
 
-class SVM(SklearnModel):
-
-    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
-        super().__init__(model_params, is_binary)
-        self.model = SVC(**self.model_params)
-
-
-class RandomForest(SklearnModel):
-
-    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
-        super().__init__(model_params, is_binary)
-        self.model = RandomForestClassifier(**self.model_params)
-
-
-class CatBoostModel(SklearnModel):
-
-    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
-        super().__init__(model_params, is_binary)
-        if "verbose" not in self.model_params:
-            self.model_params["verbose"] = 0
-        self.model = CatBoostClassifier(**self.model_params)
-
-
-class XGBoostModel(SklearnModel):
-
-    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
-        super().__init__(model_params, is_binary)
-        self.model = XGBClassifier(**self.model_params)
-
-
-class LightGBMModel(SklearnModel):
-
-    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
-        super().__init__(model_params, is_binary)
-        self.model = LGBMClassifier(**self.model_params)
-
 
 class PyTorchModel(BaseModel, abc.ABC):
 
     def __init__(
-            self, optimizer: str, criterion: str, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True
+        self, optimizer: str, criterion: str, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True
     ):
         super().__init__(model_params, is_binary)
 
@@ -220,7 +179,7 @@ class PyTorchModel(BaseModel, abc.ABC):
 
     @abc.abstractmethod
     def _create_model(self) -> nn.Module:
-          pass
+        pass
 
     def _initialize_preprocessing(self) -> list[Callable]:
         return []
@@ -230,7 +189,9 @@ class PyTorchModel(BaseModel, abc.ABC):
             X = batch_data["pixels"].to(self.device)
             y = batch_data["label"].to(self.device) if "label" in batch_data else torch.tensor([])
         elif isinstance(batch_data, (list, tuple)) and len(batch_data) >= 2:
-            X, y = batch_data[0].to(self.device), batch_data[1].to(self.device) if batch_data[1] is not  None else torch.tensor([])
+            X, y = batch_data[0].to(self.device), (
+                batch_data[1].to(self.device) if batch_data[1] is not None else torch.tensor([])
+            )
         else:
             raise ValueError(f"Unsupported batch data format: {type(batch_data)}")
 
@@ -276,7 +237,7 @@ class PyTorchModel(BaseModel, abc.ABC):
         return self
 
     def train_loop(
-            self, dataloader: DataLoader, model: nn.Module, loss_fn: nn.Module, optimizer: torch.optim.Optimizer
+        self, dataloader: DataLoader, model: nn.Module, loss_fn: nn.Module, optimizer: torch.optim.Optimizer
     ) -> float:
         size = len(dataloader.dataset)  # type: ignore
         model.train()

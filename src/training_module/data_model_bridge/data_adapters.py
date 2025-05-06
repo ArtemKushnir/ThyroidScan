@@ -52,10 +52,6 @@ class BaseDataAdapter(abc.ABC):
     def data(self) -> Any:
         return self._data
 
-    def _is_prepare(self) -> None:
-        if not self._preprocessed:
-            raise ValueError("Data is not prepare")
-
     def _convert_tirads(self, tirads_string: str) -> int:
         tirads_digits = "".join([ch for ch in tirads_string if ch.isdigit()])
         if tirads_digits == "":

@@ -1,6 +1,7 @@
 from typing import Any, Callable, Type, Union
 
-from src.training_module.feature_engineering_layer.plugins import FeaturePlugin, TransformPlugin
+from src.training_module.feature_engineering_layer.feature_plugins import FeaturePlugin
+from src.training_module.feature_engineering_layer.transform_plugins import TransformPlugin
 
 
 class PluginRegistryMixin:
@@ -26,7 +27,7 @@ class PluginRegistryMixin:
 
 
 class FeatureRegistry(PluginRegistryMixin):
-    _plugins: dict[str, FeaturePlugin] = {}
+    _plugins: dict[str, "FeaturePlugin"] = {}
 
     @classmethod
     def register_plugin(cls, name: str) -> Callable[[Type[FeaturePlugin]], Type[FeaturePlugin]]:

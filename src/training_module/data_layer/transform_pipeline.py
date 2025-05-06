@@ -1,17 +1,19 @@
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from src.image_data.image_data import Image
 from src.training_module.feature_engineering_layer.plugin_registry import TransformRegistry
-from src.training_module.feature_engineering_layer.plugins import TransformPlugin
+from src.training_module.feature_engineering_layer.transform_plugins import TransformPlugin
 
 
 class TransformPipeline:
     """Pipeline for feature transform"""
 
-    def __init__(self, transform_plugins: list[tuple[str, dict]]) -> None:
+    def __init__(self, transform_plugins: list[tuple[str, dict]], is_label: bool = True) -> None:
         self.transform_plugins = self._load_plugins(transform_plugins)
+        self.is_label = is_label
 
     @staticmethod
     def _load_plugins(plugins: list[tuple[str, dict]]) -> list[TransformPlugin]:
@@ -29,9 +31,11 @@ class TransformPipeline:
         for i, image in enumerate(images):
             image.features = features_dict[i]
 
-    @staticmethod
-    def _get_df(images: list[Image]) -> pd.DataFrame:
-        return pd.DataFrame([image.features for image in images])
+    def _get_df(self, images: list[Image]) -> pd.DataFrame:
+        df = pd.DataFrame([image.features for image in images])
+        if self.is_label:
+            df["tirads"] = np.array([image.metadata["tirads"] for image in images]) # type: ignore
+        return df
 
     @staticmethod
     def _get_features_dict(df: pd.DataFrame) -> list[dict[str, Any]]:

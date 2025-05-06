@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 import optuna
 from sklearn.model_selection import GridSearchCV
 
-from src.training_module.model_core.models import PyTorchModel, SklearnModel
+from src.training_module.model_core.base_models import PyTorchModel, SklearnModel
 
 
 class TunerFactory:
