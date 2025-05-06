@@ -1,4 +1,4 @@
-from typing import Callable, Type, Any
+from typing import Any, Callable, Type
 
 from src.training_module.feature_engineering_layer.transform_plugins import TransformPlugin
 
