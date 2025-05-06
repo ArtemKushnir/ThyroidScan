@@ -132,9 +132,9 @@ class OutlierRemovalTransformation(TransformPlugin):
         super().__init__()
         self.threshold = threshold
         self.method = method  # 'clip' or 'remove'
-        self.numeric_columns = []
-        self.means = {}
-        self.stds = {}
+        self.numeric_columns: list[str] = []
+        self.means: dict[str, float] = {}
+        self.stds: dict[str, float] = {}
 
     def _fit(self, df: pd.DataFrame) -> None:
         X = df.drop(columns=[self.target_column], errors="ignore")
@@ -207,7 +207,7 @@ class SelectKBestTransformation(TransformPlugin):
         self.numeric_columns = X.select_dtypes(include=["number"]).columns.tolist()
         self.selector.fit(X[self.numeric_columns], y)
         self.selected_indices = self.selector.get_support()
-        self.selected_features = [col for selected, col in zip(self.selected_indices, self.numeric_columns) if selected]  # type: ignore
+        self.selected_features = [col for selected, col in zip(self.selected_indices, self.numeric_columns) if selected]
 
     def _transform(self, df: pd.DataFrame) -> pd.DataFrame:
         result_df = df.copy()
