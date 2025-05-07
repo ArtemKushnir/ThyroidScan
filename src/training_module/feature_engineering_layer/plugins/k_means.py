@@ -8,7 +8,7 @@ from src.training_module.feature_engineering_layer.plugin_registry import Transf
 from src.training_module.feature_engineering_layer.plugins.transform_plugin import TransformPlugin
 
 
-@TransformRegistry.register_plugin("kmeans_clustering_features")
+@TransformRegistry.register_plugin("k_means")
 class KMeansClusteringFeatures(TransformPlugin):
     """Creating features based on KMeans clusterization"""
 
