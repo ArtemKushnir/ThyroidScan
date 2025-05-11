@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type
 import optuna
 from sklearn.model_selection import GridSearchCV
 
-from src.training_module.model_core.base_models import PyTorchModel, SklearnModel
+from src.training_module.model_core.base_models import BaseTuner, PyTorchModel, SklearnModel
 
 
 class TunerFactory:
@@ -22,21 +22,10 @@ class TunerFactory:
         return decorator
 
     @classmethod
-    def create(cls, name: str, **kwargs: Any) -> "BaseTuner":
+    def create(cls, name: str, **kwargs: Any) -> BaseTuner:
         if name not in cls._registry:
             raise ValueError(f"Tuner {name} is not registered")
         return cls._registry[name](**kwargs)
-
-
-class BaseTuner(abc.ABC):
-    """Base abstract class for all hyperparameter tuners."""
-
-    def __init__(self, scoring: str = "f1") -> None:
-        self.scoring = scoring
-
-    @abc.abstractmethod
-    def tune(self, model: Any, data: Any, param_space: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
-        pass
 
 
 class OptunaTuner(BaseTuner, ABC):
