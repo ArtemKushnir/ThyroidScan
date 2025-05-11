@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 from src.image_processing.segmentation.algorithms.segmentation_interfaces import PointFinder
 
 
-class PointsFinder(PointFinder):
+class WavePointFinder(PointFinder):
     """
     Detects points in regions with maximum statistical deviation from global image characteristics.
 

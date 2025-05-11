@@ -34,7 +34,7 @@ class MaskSelector(BaseEstimator, TransformerMixin):
             for mask in valid_masks:
                 if image.cropped_image is not None and image.true_mask is not None:
                     features = self._extract_features(mask, image.cropped_image)
-                    iou = jaccard_score(image.true_mask.ravel(), mask.ravel())
+                    iou = jaccard_score(image.true_mask.ravel(), mask.ravel(), pos_label=255)
                     image_features.append((iou, features))
                 else:
                     raise ValueError("Cropped image and true_mask can't be None.")
@@ -115,7 +115,7 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
         return np.array(features)
 
-    def _validate_masks(self, masks: list[NDArray], min_pixels: int = 15) -> list[NDArray]:
+    def _validate_masks(self, masks: list[NDArray], min_pixels: int = 20) -> list[NDArray]:
         good_masks = []
         bad_masks = []
 
@@ -144,7 +144,7 @@ class MaskSelector(BaseEstimator, TransformerMixin):
             weight += 2
 
         if np.sum(mask) <= min_pixels:
-            weight += 1
+            weight += 2
 
         coverage = np.mean(mask)
         if coverage > MAX_COVERAGE:

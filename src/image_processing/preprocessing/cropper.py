@@ -49,7 +49,8 @@ class Cropper(BaseEstimator, TransformerMixin):
                 x + wight - self.crop_radius,
             ]
         )
-        cropped_image = image.org_image[crop_points[0] : crop_points[1], crop_points[2] : crop_points[3]]
+        cropped_image = gray_image[crop_points[0] : crop_points[1], crop_points[2] : crop_points[3]]
+
         image.crop_points = crop_points
         image.cropped_image = cropped_image
 
@@ -79,9 +80,7 @@ class Cropper(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _check_for_double(cropped_image: NDArray) -> Optional[tuple[NDArray, NDArray]]:
-        gray = cv2.cvtColor(cropped_image, cv2.COLOR_BGR2GRAY)
-
-        sobel_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        sobel_x = cv2.Sobel(cropped_image, cv2.CV_64F, 1, 0, ksize=3)
         sobel_x = np.absolute(sobel_x)
         sobel_x = (255 * sobel_x / np.max(sobel_x)).astype(np.uint8)
 
@@ -105,7 +104,7 @@ class Cropper(BaseEstimator, TransformerMixin):
         if image.crop_points is None:
             raise ValueError("Image after cropping should have crop points.")
 
-        gray_mask = cv2.cvtColor(image.true_mask, cv2.COLOR_BGR2GRAY)
+        gray_mask = image.true_mask
         cropped_mask = gray_mask[
             image.crop_points[0] : image.crop_points[1], image.crop_points[2] : image.crop_points[3]
         ]

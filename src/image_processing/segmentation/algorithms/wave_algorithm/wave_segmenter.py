@@ -12,7 +12,7 @@ class WaveSegmenter(SegmentationAlgorithm):
     Expands a region from a starting point based on intensity similarity.
     """
 
-    def __init__(self, threshold: int = 10, connectivity: str = "4") -> None:
+    def __init__(self, threshold: int = 15, connectivity: int = 4) -> None:
         """
         Initialize the wave segmenter.
 
@@ -59,7 +59,7 @@ class WaveSegmenter(SegmentationAlgorithm):
 
     def _validate_params(self) -> None:
         """Validate constructor parameters."""
-        if self.connectivity not in ["4", "8"]:
+        if self.connectivity not in [4, 8]:
             raise ValueError("Connectivity must be either '4' or '8'.")
         if not 0 <= self.threshold <= 255:
             raise ValueError("Threshold must be between 0 and 255.")
@@ -67,7 +67,7 @@ class WaveSegmenter(SegmentationAlgorithm):
     def _get_directions(self) -> list[tuple[int, int]]:
         """Get expansion directions based on connectivity."""
         four_way = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        return four_way if self.connectivity == "4" else four_way + [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+        return four_way if self.connectivity == 4 else four_way + [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
     @staticmethod
     def _validate_input(image: np.ndarray, start_point: tuple[int, int]) -> None:

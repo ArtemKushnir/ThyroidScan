@@ -43,6 +43,9 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
             features = {}
             features.update(self._prefix_features(self._extract_common_features(image.cropped_image), prefix="image"))
+            features.update(
+                self._prefix_features(self._calc_statistic_features(image.cropped_image.ravel()), prefix="image")
+            )
 
             masks = image.segmented_masks
             if masks is None:
@@ -62,16 +65,8 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         if region is None:
             raise ValueError("Region can't be None.")
 
-        features = {
-            "mean": float(np.mean(region)),
-            "std": float(np.std(region)),
-            "skewness": float(skew(region)),
-            "kurtosis": float(kurtosis(region)),
-            "entropy": float(shannon_entropy(region)),
-            **self._calc_quantile_features(region),
-            **self._calc_histogram_features(region),
-            **self._calc_contour_features(region),
-        }
+        features = {}
+        features.update(self._calc_contour_features(region))
 
         if self.lbp_points > 0:
             features.update(self._calc_lbp_features(region))
@@ -84,13 +79,34 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
         return features
 
+    def _calc_statistic_features(self, region: NDArray) -> dict[str, float]:
+        """Calculates statistic features."""
+        if region is None:
+            raise ValueError("Region can't be None.")
+        if len(region.shape) != 1:
+            raise ValueError("Region dimension must be 1.")
+
+        features = {
+            "mean": float(np.mean(region)),
+            "std": float(np.std(region)),
+            "skewness": float(skew(region)),
+            "kurtosis": float(kurtosis(region)),
+            "entropy": float(shannon_entropy(region)),
+        }
+
+        features.update(self._calc_quantile_features(region))
+        features.update(self._calc_histogram_features(region))
+
+        return features
+
     def _extract_mask_features(self, mask: NDArray, image: NDArray) -> dict[str, float]:
         """Extracts features of a mask and its corresponding region."""
         binary_mask = (mask > 0).astype(np.uint8)
         masked_region = image[binary_mask > 0]
 
-        features = self._extract_geometric_features(binary_mask)
-        features.update(self._extract_common_features(masked_region))
+        features = self._calc_geometric_features(binary_mask)
+        features.update(self._calc_statistic_features(masked_region))
+        features.update(self._extract_common_features(image * binary_mask))
 
         return features
 
@@ -146,18 +162,35 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
     def _calc_wavelet_features(self, region: NDArray) -> dict[str, float]:
         """Calculate wavelet transform statistics."""
-        coeffs = pywt.wavedec2(region, "haar", level=self.wavelet_level)
         features = {}
+        coeffs = pywt.wavedec2(region, "haar", level=self.wavelet_level)
 
-        for i, (cA, (cH, cV, cD)) in enumerate(coeffs if len(coeffs) > 1 else [coeffs[0]]):
-            prefix = f"wavelet_l{i}_"
+        cA = coeffs[0]
+        features.update(
+            {
+                "wavelet_approx_mean": float(np.mean(cA)),
+                "wavelet_approx_std": float(np.std(cA)),
+                "wavelet_approx_energy": float(np.sum(cA**2)),
+                "wavelet_approx_min": float(np.min(cA)),
+                "wavelet_approx_max": float(np.max(cA)),
+            }
+        )
+
+        for i in range(1, len(coeffs)):
+            cH, cV, cD = coeffs[i]
+            prefix = f"wavelet_level{self.wavelet_level - i + 1}_"
+
             features.update(
                 {
-                    f"{prefix}approx_mean": float(np.mean(cA)),
                     f"{prefix}horiz_mean": float(np.mean(cH)),
+                    f"{prefix}horiz_std": float(np.std(cH)),
                     f"{prefix}vert_mean": float(np.mean(cV)),
+                    f"{prefix}vert_std": float(np.std(cV)),
                     f"{prefix}diag_mean": float(np.mean(cD)),
-                    f"{prefix}approx_energy": float(np.sum(cA**2)),
+                    f"{prefix}diag_std": float(np.std(cD)),
+                    f"{prefix}horiz_energy": float(np.sum(cH**2)),
+                    f"{prefix}vert_energy": float(np.sum(cV**2)),
+                    f"{prefix}diag_energy": float(np.sum(cD**2)),
                 }
             )
 
@@ -183,7 +216,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         }
 
     @staticmethod
-    def _extract_geometric_features(mask: NDArray) -> dict[str, float]:
+    def _calc_geometric_features(mask: NDArray) -> dict[str, float]:
         """Calculates geometric features of a mask."""
         contours = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
         if not contours:
@@ -207,6 +240,5 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             "perimeter": float(perimeter),
             "compactness": (4 * np.pi * area) / (perimeter**2) if perimeter > 0 else 0.0,
             "aspect_ratio": float(cv2.boundingRect(cnt)[2]) / max(cv2.boundingRect(cnt)[3], 1e-5),
-            "circularity": (4 * np.pi * area) / (perimeter**2) if perimeter > 0 else 0.0,
             "convexity": float(hull_area / area) if area > 0 else 0.0,
         }
