@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from torch.utils.data import DataLoader
 
 from src.training_module.model_core.base_models import PyTorchModel
+from src.training_module.model_core.model_registry import ModelRegistry
 
 
 class ThyroidNet(nn.Module):
@@ -93,6 +94,7 @@ class ThyroidNet(nn.Module):
         return output
 
 
+@ModelRegistry.register("cnn_mlp_hybrid")
 class ThyroidClassificationModel(PyTorchModel):
     """
     PyTorch model for thyroid disease classification using both US images and statistical features.

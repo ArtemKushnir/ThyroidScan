@@ -13,9 +13,19 @@ from torch.utils.data import DataLoader
 
 from src.training_module import root_loger
 from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter
-from src.training_module.model_core.torch_models.criterions import BINARY_CRITERION, MULTICLASS_CRITERION
-from src.training_module.model_core.torch_models.optimizers import OPTIMIZER
-from src.training_module.model_core.tuners import BaseTuner
+from src.training_module.model_core.models.torch_models.criterions import BINARY_CRITERION, MULTICLASS_CRITERION
+from src.training_module.model_core.models.torch_models.optimizers import OPTIMIZER
+
+
+class BaseTuner(abc.ABC):
+    """Base abstract class for all hyperparameter tuners."""
+
+    def __init__(self, scoring: str = "f1") -> None:
+        self.scoring = scoring
+
+    @abc.abstractmethod
+    def tune(self, model: Any, data: Any, param_space: dict[str, Any]) -> tuple[float, dict[str, Any]]:
+        pass
 
 
 class BaseModel(abc.ABC):
@@ -66,8 +76,8 @@ class BaseModel(abc.ABC):
         test_data = data_adapter.data
         if isinstance(self, SklearnModel):
             X_test, y_test = test_data
-            y_pred = self.predict(X_test)
-            y_proba = self.predict_proba(X_test)
+            y_pred = self.predict(data_adapter)
+            y_proba = self.predict_proba(data_adapter)
 
             if len(np.unique(y_test)) == 2:
                 metrics = {
