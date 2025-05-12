@@ -11,14 +11,35 @@ from src.image_data.image_data import Image
 
 
 class Cropper(BaseEstimator, TransformerMixin):
+    """
+    Crops input images around the largest detected contour and optionally splits double images.
+    """
 
     def __init__(self, crop_radius: int = 10) -> None:
+        """
+        :param crop_radius: Number of pixels to keep as padding around the detected object (max 50).
+        """
         self.crop_radius = self._validate_radius(crop_radius)
 
     def fit(self, image_list: list[Image], target: Any = None) -> "Cropper":
+        """
+        Fit method for compatibility with scikit-learn pipelines.
+
+        This method does nothing and simply returns self.
+
+        :param image_list: List of Image objects.
+        :param target: Not used.
+        :return: Self.
+        """
         return self
 
     def transform(self, image_list: list[Image]) -> list[Image]:
+        """
+        Applies cropping to each image in the list.
+
+        :param image_list: List of Image objects.
+        :return: Image list with cropped image and true mask attributes.
+        """
         if not isinstance(image_list, list):
             raise TypeError("A list of images was expected.")
 
@@ -30,6 +51,9 @@ class Cropper(BaseEstimator, TransformerMixin):
         return cropped_list
 
     def _crop_image(self, image: Image) -> list[Image]:
+        """
+        Crops an image around the largest contour and splits if double objects are found.
+        """
         gray_image = cv2.cvtColor(image.org_image, cv2.COLOR_BGR2GRAY)
         denoised_image = cv2.medianBlur(gray_image, 3)
 
@@ -80,6 +104,9 @@ class Cropper(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _check_for_double(cropped_image: NDArray) -> Optional[tuple[NDArray, NDArray]]:
+        """
+        Detects whether the cropped image contains two objects side by side.
+        """
         sobel_x = cv2.Sobel(cropped_image, cv2.CV_64F, 1, 0, ksize=3)
         sobel_x = np.absolute(sobel_x)
         sobel_x = (255 * sobel_x / np.max(sobel_x)).astype(np.uint8)
@@ -99,6 +126,18 @@ class Cropper(BaseEstimator, TransformerMixin):
     def _crop_mask(
         image: Image, is_double: bool = False, split_column: Optional[int] = None, image_type: Optional[str] = None
     ) -> Image:
+        """
+        Crops the ground truth mask corresponding to the cropped image.
+
+        Handles single and double-object cases by splitting the cropped mask
+        accordingly.
+
+        :param image: Image object with `true_mask` and `crop_points`.
+        :param is_double: Whether the image is split into two parts.
+        :param split_column: X-coordinate for vertical split.
+        :param image_type: "left" or "right" for double images.
+        :return: Image object with cropped true_mask.
+        """
         if image.true_mask is None:
             raise ValueError("Image must have true mask.")
         if image.crop_points is None:
@@ -133,6 +172,9 @@ class Cropper(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _validate_radius(radius: int) -> int:
+        """
+        Validates that the crop radius is an integer in an acceptable range.
+        """
         if not isinstance(radius, int):
             raise TypeError("Radius must be int.")
         if radius < 0 or radius > 50:
@@ -141,6 +183,9 @@ class Cropper(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _validate_image(image: Image) -> Image:
+        """
+        Validates that the input is a non-null Image object.
+        """
         if not isinstance(image, Image):
             raise TypeError("Image must be object of Image.")
         if image is None:

@@ -63,7 +63,7 @@ class WaveSegmenter(SegmentationAlgorithm):
         return four_way if self.connectivity == 4 else four_way + [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
     @staticmethod
-    def _validate_params(threshold, connectivity) -> None:
+    def _validate_params(threshold: int, connectivity: int) -> None:
         """Validate constructor parameters."""
         if connectivity not in [4, 8]:
             raise ValueError("Connectivity must be either '4' or '8'.")

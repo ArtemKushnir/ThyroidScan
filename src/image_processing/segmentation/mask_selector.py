@@ -14,8 +14,19 @@ from src.image_data.image_data import Image
 
 
 class MaskSelector(BaseEstimator, TransformerMixin):
+    """
+    Selects the best segmentation masks based on shape and intensity features.
+
+    This class ranks segmentation masks for each image using basic geometric
+    and intensity-based features. Optionally, it can use K-Nearest Neighbors
+    to select masks that are most similar to a reference set of top masks.
+    """
 
     def __init__(self, mask_number: int = 10, use_knn: bool = True):
+        """
+        :param mask_number: Number of masks to retain for each image.
+        :param use_knn: Whether to use KNN-based similarity to select masks.
+        """
         self.mask_number = mask_number
         self.use_knn = use_knn
         self._scaler = StandardScaler()
@@ -23,6 +34,17 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         self._reference_features: Optional[NDArray] = None
 
     def fit(self, images_with_masks: list[Image], target: Any = None) -> "MaskSelector":
+        """
+        Fits the mask selector on a list of segmented images.
+
+        For each mask in each image, extracts features and computes the IoU
+        (Jaccard score) with the true mask. The top-N masks with highest IoU
+        are used to build the reference set for KNN matching.
+
+        :param images_with_masks: List of Image objects with segmented_masks and true_mask.
+        :param target: Ignored. Exists for compatibility with scikit-learn.
+        :return: Self.
+        """
         all_features: list[NDArray] = []
 
         for image in images_with_masks:
@@ -56,6 +78,12 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, image_list: list[Image]) -> list[Image]:
+        """
+        Selects the best segmentation masks for each image.
+
+        :param image_list: List of Image objects with segmented_masks.
+        :return: List of images with updated segmented_masks.
+        """
         if self._reference_features is None:
             raise NotFittedError("Selector must be fitted before calling transform.")
 
@@ -79,6 +107,16 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         return copy_list
 
     def _validate_masks(self, masks: list[NDArray], min_pixels: int = 16) -> list[NDArray]:
+        """
+        Filters masks based on quality heuristics.
+
+        Selects masks with low "badness" weight. If not enough good masks are found,
+        fills the result with the least bad ones.
+
+        :param masks: List of mask arrays to evaluate.
+        :param min_pixels: Minimum number of pixels required to consider a mask valid.
+        :return: List of selected masks.
+        """
         good_masks = []
         bad_masks = []
 
@@ -102,6 +140,13 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _extract_features(mask: NDArray, image: NDArray) -> NDArray:
+        """
+        Extracts shape and intensity-based features from a mask.
+
+        :param mask: Binary mask array.
+        :param image: Corresponding image array.
+        :return: 1D NumPy array of features.
+        """
         features: list[float] = []
         binary_mask = (mask > 0).astype(np.uint8)
 
@@ -142,6 +187,14 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _get_weights(mask: NDArray, min_pixels: int = 16, max_coverage: float = 0.43) -> float:
+        """
+        Calculates a heuristic weight for a mask based on pixel count and coverage.
+
+        :param mask: Binary mask array.
+        :param min_pixels: Minimum pixel threshold.
+        :param max_coverage: Maximum fraction of mask coverage before penalty.
+        :return: Weight value.
+        """
         weight = 0.0
 
         if not np.any(mask):

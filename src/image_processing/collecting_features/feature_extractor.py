@@ -15,6 +15,10 @@ from src.image_data.image_data import Image
 
 
 class FeatureExtractor(BaseEstimator, TransformerMixin):
+    """
+    Extracts a variety of features from images and masks, including statistical, texture, and geometric features.
+    """
+
     def __init__(
         self,
         lbp_radius: int = 2,
@@ -25,6 +29,15 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         quantiles: list[float] = [0.1, 0.25, 0.5, 0.75, 0.9],
         wavelet_level: int = 3,
     ):
+        """
+        :param lbp_radius:  Radius of the Local Binary Pattern.
+        :param lbp_points: Number of points in the LBP calculation.
+        :param glcm_distances: List of distances for calculating the GLCM.
+        :param glcm_angles: List of angles for calculating the GLCM.
+        :param hist_bins: Number of bins for histogram-based features.
+        :param quantiles: Quantiles to calculate for the image or mask.
+        :param wavelet_level: Level of wavelet decomposition to compute.
+        """
         self.lbp_radius = lbp_radius
         self.lbp_points = lbp_points
         self.glcm_distances = glcm_distances
@@ -34,10 +47,24 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         self.wavelet_level = wavelet_level
 
     def fit(self, image_list: list[Image], target: Any = None) -> "FeatureExtractor":
+        """
+        Fit method for compatibility with scikit-learn pipelines.
+
+        This method does nothing and simply returns self.
+
+        :param image_list: List of Image objects.
+        :param target: Not used.
+        :return: Self.
+        """
         return self
 
     def transform(self, image_list: list[Image]) -> list[Image]:
-        """Extract features for each image and its masks."""
+        """
+        Extracts features for each image and its masks.
+
+        :param image_list: List of Image objects.
+        :return: List of Image objects with updated `features` attributes.
+        """
         copy_list = deepcopy(image_list)
 
         for image in copy_list:
