@@ -81,9 +81,9 @@ class SklearnDataAdapter(BaseDataAdapter):
     """DataAdapter for sklearn compatible models"""
 
     def prepare(self) -> None:
-        X = np.array([img.features.values() for img in self.images])  # type: ignore
+        X = np.array([list(img.features.values()) for img in self.images])  # type: ignore
         if self.label:
-            y = np.array([self._convert_tirads(img.metadata["tirads"]) for img in self.images])  # type: ignore
+            y = np.array([img.metadata["tirads"] for img in self.images])  # type: ignore
         else:
             y = None
         self._data = (X, y)
