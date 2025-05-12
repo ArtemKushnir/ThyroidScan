@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any, Optional
 
 import numpy as np
@@ -56,7 +57,9 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         if self._reference_features is None:
             raise NotFittedError("Selector must be fitted before calling transform.")
 
-        for image in image_list:
+        copy_list = deepcopy(image_list)
+
+        for image in copy_list:
             if image.segmented_masks is not None:
                 valid_masks = self._validate_masks(image.segmented_masks)
             else:
@@ -74,7 +77,7 @@ class MaskSelector(BaseEstimator, TransformerMixin):
             best_indices = np.argsort(distances.ravel())[: self.mask_number]
             image.segmented_masks = [valid_masks[i] for i in best_indices]
 
-        return image_list
+        return copy_list
 
     def _extract_features(self, mask: NDArray, image: NDArray) -> NDArray:
         features: list[float] = []

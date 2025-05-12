@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -18,11 +19,12 @@ class ImageSegmenter(BaseEstimator, TransformerMixin):
     def transform(self, image_list: list[Image]) -> list[Image]:
         if not isinstance(image_list, list):
             raise TypeError("A list of images was expected.")
+        copy_list = deepcopy(image_list)
 
-        for image in image_list:
+        for image in copy_list:
             if image.cropped_image is not None:
                 points = self.point_finder.find_points(image.cropped_image)
                 image.segmented_masks = [self.algorithm.segment(image.cropped_image, point) for point in points]
             else:
                 raise ValueError("Cropped image can't be None.")
-        return image_list
+        return copy_list

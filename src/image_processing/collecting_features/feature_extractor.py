@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any
 
 import cv2
@@ -37,7 +38,9 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
     def transform(self, image_list: list[Image]) -> list[Image]:
         """Extract features for each image and its masks."""
-        for image in image_list:
+        copy_list = deepcopy(image_list)
+
+        for image in copy_list:
             if image.cropped_image is None:
                 raise NotFittedError("Should use Cropper before.")
 
@@ -58,7 +61,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
             image.features = features
 
-        return image_list
+        return copy_list
 
     def _extract_common_features(self, region: NDArray) -> dict[str, float]:
         """Extract common features for any region (image or mask area)."""

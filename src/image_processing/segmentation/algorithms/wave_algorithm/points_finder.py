@@ -13,7 +13,7 @@ class WavePointFinder(PointFinder):
     (mean, variance, standard deviation) differ most from the global image characteristics.
     """
 
-    def __init__(self, points_number: int = 20, window_size: int = 80, step: int = 40):
+    def __init__(self, points_number: int = 20, window_size: int = 80, step: int = 40) -> None:
         """
         Initialize the point finder.
 

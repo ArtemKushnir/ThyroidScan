@@ -19,9 +19,9 @@ class WaveSegmenter(SegmentationAlgorithm):
         :param threshold: Maximum allowed intensity difference between neighboring pixels (0-255).
         :param connectivity: Pixel connectivity mode ('4' for 4-way, '8' for 8-way).
         """
+        self._validate_params(threshold, connectivity)
         self.threshold = threshold
         self.connectivity = connectivity
-        self._validate_params()
         self.directions = self._get_directions()
 
     def segment(self, image: NDArray, start_point: tuple[int, int]) -> NDArray:
@@ -57,17 +57,18 @@ class WaveSegmenter(SegmentationAlgorithm):
 
         return mask
 
-    def _validate_params(self) -> None:
-        """Validate constructor parameters."""
-        if self.connectivity not in [4, 8]:
-            raise ValueError("Connectivity must be either '4' or '8'.")
-        if not 0 <= self.threshold <= 255:
-            raise ValueError("Threshold must be between 0 and 255.")
-
     def _get_directions(self) -> list[tuple[int, int]]:
         """Get expansion directions based on connectivity."""
         four_way = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         return four_way if self.connectivity == 4 else four_way + [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+
+    @staticmethod
+    def _validate_params(threshold, connectivity) -> None:
+        """Validate constructor parameters."""
+        if connectivity not in [4, 8]:
+            raise ValueError("Connectivity must be either '4' or '8'.")
+        if not 0 <= threshold <= 255:
+            raise ValueError("Threshold must be between 0 and 255.")
 
     @staticmethod
     def _validate_input(image: np.ndarray, start_point: tuple[int, int]) -> None:

@@ -29,7 +29,7 @@ class Cropper(BaseEstimator, TransformerMixin):
 
         return cropped_list
 
-    def _crop_image(self, image: Image) -> list:
+    def _crop_image(self, image: Image) -> list[Image]:
         gray_image = cv2.cvtColor(image.org_image, cv2.COLOR_BGR2GRAY)
         denoised_image = cv2.medianBlur(gray_image, 3)
 
