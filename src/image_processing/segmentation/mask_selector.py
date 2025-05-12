@@ -26,19 +26,21 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         all_features: list[NDArray] = []
 
         for image in images_with_masks:
-            if image.segmented_masks is not None:
-                valid_masks = self._validate_masks(image.segmented_masks)
-            else:
-                raise ValueError("Segmented mask can't be None.")
+            if image.segmented_masks is None:
+                raise NotFittedError("Use ImageSegmenter before.")
+            if image.cropped_image is None:
+                raise NotFittedError("Use Cropper before.")
+
+            valid_masks = self._validate_masks(image.segmented_masks)
 
             image_features = []
             for mask in valid_masks:
-                if image.cropped_image is not None and image.true_mask is not None:
-                    features = self._extract_features(mask, image.cropped_image)
-                    iou = jaccard_score(image.true_mask.ravel(), mask.ravel(), pos_label=255)
-                    image_features.append((iou, features))
-                else:
-                    raise ValueError("Cropped image and true_mask can't be None.")
+                if image.true_mask is None:
+                    raise ValueError("True_mask can't be None. Use XMLHandler before.")
+
+                features = self._extract_features(mask, image.cropped_image)
+                iou = jaccard_score(image.true_mask.ravel(), mask.ravel(), pos_label=255)
+                image_features.append((iou, features))
 
             image_features.sort(reverse=True, key=lambda x: x[0])
             top_features = np.array([x[1] for x in image_features[: self.mask_number]])
@@ -60,18 +62,15 @@ class MaskSelector(BaseEstimator, TransformerMixin):
         copy_list = deepcopy(image_list)
 
         for image in copy_list:
-            if image.segmented_masks is not None:
-                valid_masks = self._validate_masks(image.segmented_masks)
-            else:
-                raise ValueError("Segmented mask can't be None.")
+            if image.segmented_masks is None:
+                raise NotFittedError("Use ImageSegmenter before.")
+            if image.cropped_image is None:
+                raise NotFittedError("Use Cropper before.")
 
-            if image.cropped_image is not None:
-                features = np.array([self._extract_features(mask, image.cropped_image) for mask in valid_masks])
-            else:
-                raise ValueError("Cropped image can't be None.")
+            valid_masks = self._validate_masks(image.segmented_masks)
 
+            features = np.array([self._extract_features(mask, image.cropped_image) for mask in valid_masks])
             scaled_features = self._scaler.transform(features)
-
             distances, _ = self._knn.kneighbors(scaled_features)
 
             best_indices = np.argsort(distances.ravel())[: self.mask_number]
@@ -79,7 +78,30 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
         return copy_list
 
-    def _extract_features(self, mask: NDArray, image: NDArray) -> NDArray:
+    def _validate_masks(self, masks: list[NDArray], min_pixels: int = 16) -> list[NDArray]:
+        good_masks = []
+        bad_masks = []
+
+        for mask in masks:
+            binary_mask = (mask > 0).astype(np.uint8)
+            weight = self._get_weights(binary_mask, min_pixels)
+            if weight == 0:
+                good_masks.append((weight, mask))
+            else:
+                bad_masks.append((weight, mask))
+
+        if len(good_masks) >= self.mask_number:
+            return [mask for _, mask in good_masks]
+
+        bad_masks.sort(key=lambda x: x[0])
+
+        add_mask_num = self.mask_number - len(good_masks)
+        good_masks += [(weight, mask) for weight, mask in bad_masks[:add_mask_num]]
+
+        return [mask for _, mask in good_masks]
+
+    @staticmethod
+    def _extract_features(mask: NDArray, image: NDArray) -> NDArray:
         features: list[float] = []
         binary_mask = (mask > 0).astype(np.uint8)
 
@@ -118,38 +140,19 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
         return np.array(features)
 
-    def _validate_masks(self, masks: list[NDArray], min_pixels: int = 20) -> list[NDArray]:
-        good_masks = []
-        bad_masks = []
-
-        for mask in masks:
-            weight = self._get_weights(mask, min_pixels)
-            if weight == 0:
-                good_masks.append((weight, mask))
-            else:
-                bad_masks.append((weight, mask))
-
-        if len(good_masks) >= self.mask_number:
-            return [mask for _, mask in good_masks]
-
-        bad_masks.sort(key=lambda x: x[0])
-
-        add_mask_num = self.mask_number - len(good_masks)
-        good_masks += [(weight, mask) for weight, mask in bad_masks[:add_mask_num]]
-        return [mask for _, mask in good_masks]
-
     @staticmethod
-    def _get_weights(mask: NDArray, min_pixels: int = 15) -> float:
-        weight = 0
-        MAX_COVERAGE = 0.9
+    def _get_weights(mask: NDArray, min_pixels: int = 16, max_coverage: float = 0.43) -> float:
+        weight = 0.0
 
         if not np.any(mask):
-            weight += 2
+            weight += min_pixels + 3
 
-        if np.sum(mask) <= min_pixels:
-            weight += 2
+        pixel_num = np.sum(mask)
+        if pixel_num <= min_pixels:
+            weight -= pixel_num
 
         coverage = np.mean(mask)
-        if coverage > MAX_COVERAGE:
-            weight += 1
+        if coverage > max_coverage:
+            weight -= min_pixels / 2
+
         return weight
