@@ -10,25 +10,22 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 @ModelRegistry.register("resnet_image")
 class ThyroidResNetModel(PyTorchModel):
+    name = "resnet_image"
+
     def __init__(
         self,
-        optimizer: str = "adam",
-        criterion: str = "bce_logit",
         model_params: Optional[dict[str, Any]] = None,
         is_binary: bool = True,
         resnet_model_name: str = "resnet18",
         pretrained: bool = True,
-        spatial_dims: int = 2,
-        n_input_channels: int = 1,
-        num_classes: int = 1,
     ):
-        super().__init__(optimizer, criterion, model_params, is_binary)
+        super().__init__(model_params, is_binary)
 
         self.resnet_model_name = resnet_model_name
         self.pretrained = pretrained
-        self.spatial_dims = spatial_dims
-        self.n_input_channels = n_input_channels
-        self.num_classes = num_classes
+        self.spatial_dims = 2
+        self.n_input_channels = 1
+        self.num_classes = 1 if is_binary else 6
 
         self.model = self._create_model()
 

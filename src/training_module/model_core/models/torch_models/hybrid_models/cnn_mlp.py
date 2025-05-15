@@ -101,17 +101,17 @@ class ThyroidClassificationModel(PyTorchModel):
     This model implements the PyTorchModel interface.
     """
 
+    name = "cnn_mlp_hybrid"
+
     def __init__(
         self,
-        optimizer: str = "adam",
-        criterion: str = "bce",
         model_params: Optional[Dict[str, Any]] = None,
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 224,
         num_statistical_features: int = 10,
     ):
-        super().__init__(optimizer, criterion, model_params, is_binary)
+        super().__init__(model_params, is_binary)
 
         self.img_channels = img_channels
         self.img_size = img_size

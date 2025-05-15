@@ -17,17 +17,17 @@ class ThyroidSwinModel(PyTorchModel):
     for capturing both local and global features in medical images.
     """
 
+    name = "swin_image"
+
     def __init__(
         self,
-        optimizer: str = "adam",
-        criterion: str = "bce_logit",
         model_params: Optional[dict[str, Any]] = None,
         is_binary: bool = True,
         pretrained: bool = True,
         n_input_channels: int = 1,
         num_classes: int = 1,
     ):
-        super().__init__(optimizer, criterion, model_params, is_binary)
+        super().__init__(model_params, is_binary)
 
         self.pretrained = pretrained
         self.n_input_channels = n_input_channels
