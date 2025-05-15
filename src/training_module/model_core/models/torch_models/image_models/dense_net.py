@@ -13,10 +13,10 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 @ModelRegistry.register("dense_net_image")
 class ThyroidDenseNetModel(PyTorchModel):
+    name = "dense_net_image"
+
     def __init__(
         self,
-        optimizer: str = "adam",
-        criterion: str = "bce_logit",
         model_params: Optional[dict[str, Any]] = None,
         is_binary: bool = True,
         pretrained: bool = True,
@@ -26,7 +26,7 @@ class ThyroidDenseNetModel(PyTorchModel):
         growth_rate: int = 32,
         block_config: Tuple[int, int, int, int] = (6, 12, 24, 16),
     ):
-        super().__init__(optimizer, criterion, model_params, is_binary)
+        super().__init__(model_params, is_binary)
 
         self.pretrained = pretrained
         self.spatial_dims = spatial_dims

@@ -18,10 +18,10 @@ class EfficientNetThyroidModel(PyTorchModel):
     EfficientNet-based model for thyroid disease classification
     """
 
+    name = "efficient_net_hybrid"
+
     def __init__(
         self,
-        optimizer: str = "adamw",
-        criterion: str = "focal",
         model_params: Optional[dict[str, Any]] = None,
         is_binary: bool = True,
         img_channels: int = 1,
@@ -42,7 +42,7 @@ class EfficientNetThyroidModel(PyTorchModel):
         if model_params:
             default_params.update(model_params)
 
-        super().__init__(optimizer, criterion, default_params, is_binary)
+        super().__init__(default_params, is_binary)
 
         self.img_channels = img_channels
         self.img_size = img_size
@@ -198,7 +198,8 @@ class EfficientNetThyroidModel(PyTorchModel):
             train_loss = self.train_loop(train_loader, self.model, criterion, optimizer)
 
             if test_adapter is not None:
-                val_loss, metrics = self.validate(test_adapter)
+                metrics = self.validate(test_adapter)
+                val_loss = metrics["loss"]
 
                 if val_loss < best_loss:
                     best_loss = val_loss

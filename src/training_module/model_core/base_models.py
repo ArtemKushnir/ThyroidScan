@@ -29,6 +29,9 @@ class BaseTuner(abc.ABC):
 
 
 class BaseModel(abc.ABC):
+    DEFAULT_BINARY_MODEL_DIR = "training_module/pipeline_artifacts/model_artifacts/binary_classification"
+    DEFAULT_MULTICLASS_MODEL_DIR = "training_module/pipeline_artifacts/model_artifacts/multiclass_classification"
+    name = ""
 
     def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True):
         self.model_params: dict[str, Any] = model_params or {}
@@ -65,11 +68,11 @@ class BaseModel(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def save(self, path: str) -> None:
+    def save(self, directory: str = None) -> None:
         pass
 
     @abc.abstractmethod
-    def load(self, path: str) -> "BaseModel":
+    def load(self, directory: str = None) -> "BaseModel":
         pass
 
     def evaluate(self, data_adapter: BaseDataAdapter) -> dict[str, float]:
@@ -77,7 +80,6 @@ class BaseModel(abc.ABC):
         if isinstance(self, SklearnModel):
             X_test, y_test = test_data
             y_pred = self.predict(data_adapter)
-            y_proba = self.predict_proba(data_adapter)
 
             if len(np.unique(y_test)) == 2:
                 metrics = {
@@ -85,8 +87,10 @@ class BaseModel(abc.ABC):
                     "precision": precision_score(y_test, y_pred),
                     "recall": recall_score(y_test, y_pred),
                     "f1": f1_score(y_test, y_pred),
-                    "roc_auc": roc_auc_score(y_test, y_proba[:, 1] if y_proba.ndim > 1 else y_proba),
                 }
+                if hasattr(self.model, "predict_proba"):
+                    y_proba = self.predict_proba(data_adapter)
+                    metrics["roc_auc"] = roc_auc_score(y_test, y_proba[:, 1] if y_proba.ndim > 1 else y_proba)
             else:
                 metrics = {
                     "accuracy": accuracy_score(y_test, y_pred),
@@ -98,9 +102,9 @@ class BaseModel(abc.ABC):
             return metrics
 
         else:
-            return self._evaluate_pytorch(test_data)[1]
+            return self._evaluate_pytorch(data_adapter)
 
-    def _evaluate_pytorch(self, data_adapter: BaseDataAdapter) -> tuple[float, dict[str, float]]:
+    def _evaluate_pytorch(self, data_adapter: BaseDataAdapter) -> dict[str, float]:
         if not isinstance(self, PyTorchModel):
             raise TypeError("Method only applicable for PyTorch models")
 
@@ -121,7 +125,7 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         if test_adapter is not None:
             val_metrics = self.evaluate(test_adapter)
             log = "".join([f"{key}: {value}\n" for key, value in val_metrics.items()])
-            root_loger.info(f"Val metrics\n{log}")
+            root_loger.info(f"{self.name}\nVal metrics\n{log}")
         return self
 
     def predict(self, data_adapter: BaseDataAdapter) -> np.ndarray:
@@ -143,45 +147,68 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
     def _update_params(self, params: dict[str, Any]) -> None:
         self.model.set_params(**params)
 
-    def save(self, path: str) -> None:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "wb") as f:
+    def save(self, directory: str = None) -> None:
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
+        config_path = os.path.join(directory, f"{type(self).name}.pkl")
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "wb") as f:
             pickle.dump(self, f)
 
-    def load(self, path: str) -> "BaseModel":
-        with open(path, "rb") as f:
+    def load(self, directory: str = None) -> "BaseModel":
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
+        config_path = os.path.join(directory, f"{type(self).name}.pkl")
+        with open(config_path, "rb") as f:
             return pickle.load(f)
 
 
 class PyTorchModel(BaseModel, abc.ABC):
 
-    def __init__(
-        self, optimizer: str, criterion: str, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True
-    ):
+    def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True):
         super().__init__(model_params, is_binary)
 
         if model_params is None:
-            self.model_params = {"epoch": 10, "optim": {"lr": 0.001}}
+            self.model_params = {
+                "epoch": 10,
+                "optim": {"name": "sgd", "lr": 0.001},
+                "criterion": {"name": "bce_with_logits"},
+            }
         else:
             self.model_params = model_params
 
             if "optim" not in self.model_params:
-                self.model_params["optim"] = {"lr": 0.001}
+                self.model_params["optim"] = {"name": "sgd", "lr": 0.001}
 
             if "epoch" not in self.model_params:
                 self.model_params["epoch"] = 10
 
-        if optimizer not in OPTIMIZER:
-            raise ValueError(f"Optimizer {optimizer} not supported. Available optimizers: {list(OPTIMIZER.keys())}")
+            if "criterion" not in self.model_params:
+                self.model_params["criterion"] = {"name": "bce_with_logits"}
+
+        optimizer_dict = self.model_params["optim"]
+        criterion_dict = self.model_params["criterion"]
+
+        optimizer_name = optimizer_dict["name"]
+        criterion_name = criterion_dict["name"]
+
+        if optimizer_name not in OPTIMIZER:
+            raise ValueError(
+                f"Optimizer {optimizer_name} not supported. Available optimizers: {list(OPTIMIZER.keys())}"
+            )
 
         criterion_dict = BINARY_CRITERION if is_binary else MULTICLASS_CRITERION
-        if criterion not in criterion_dict:
-            raise ValueError(f"Criterion {criterion} not supported. Available criteria: {list(criterion_dict.keys())}")
+        if criterion_name not in criterion_dict:
+            raise ValueError(
+                f"Criterion {criterion_name} not supported. Available criteria: {list(criterion_dict.keys())}"
+            )
 
-        self.optimizer_name = optimizer
-        self.criterion_name = criterion
-        self.optimizer = OPTIMIZER[optimizer]
-        self.criterion = BINARY_CRITERION[criterion] if is_binary else MULTICLASS_CRITERION[criterion]
+        self.optimizer_name = optimizer_name
+        self.criterion_name = criterion_name
+        self.optimizer = OPTIMIZER[self.optimizer_name]
+        self.criterion = (
+            BINARY_CRITERION[self.criterion_name] if is_binary else MULTICLASS_CRITERION[self.criterion_name]
+        )
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.history: dict[str, Any] = {"train_loss": [], "val_loss": [], "metrics": {}}
 
@@ -205,9 +232,6 @@ class PyTorchModel(BaseModel, abc.ABC):
         else:
             raise ValueError(f"Unsupported batch data format: {type(batch_data)}")
 
-        for transform in self.preprocessing:
-            X = transform(X)
-
         return X, y
 
     def _apply_preprocessing(self, X: torch.Tensor) -> torch.Tensor:
@@ -228,7 +252,8 @@ class PyTorchModel(BaseModel, abc.ABC):
             train_loss = self.train_loop(train_loader, self.model, criterion, optimizer)
 
             if test_adapter is not None:
-                val_loss, metrics = self.validate(test_adapter)
+                metrics = self.validate(test_adapter)
+                val_loss = metrics["loss"]
             else:
                 val_loss, metrics = 0.0, {}
 
@@ -275,7 +300,7 @@ class PyTorchModel(BaseModel, abc.ABC):
 
         return running_loss / size
 
-    def validate(self, data_adapter: BaseDataAdapter) -> tuple[float, dict[str, float]]:
+    def validate(self, data_adapter: BaseDataAdapter) -> dict[str, float]:
         return self._evaluate_pytorch(data_adapter)
 
     def predict_proba(self, data_adapter: BaseDataAdapter) -> np.ndarray:
@@ -305,7 +330,7 @@ class PyTorchModel(BaseModel, abc.ABC):
         else:
             return np.argmax(proba, axis=1)
 
-    def _evaluate_pytorch(self, data_adapter: BaseDataAdapter) -> tuple[float, dict[str, float]]:
+    def _evaluate_pytorch(self, data_adapter: BaseDataAdapter) -> dict[str, float]:
         self.model.eval()
         running_loss = 0.0
         all_preds = []
@@ -365,7 +390,7 @@ class PyTorchModel(BaseModel, abc.ABC):
                 }
             )
 
-        return running_loss / len(test_loader.dataset), metrics
+        return metrics
 
     def get_clone_model(self, params: Optional[dict[str, Any]] = None) -> "PyTorchModel":
         clone = copy.deepcopy(self)
@@ -415,7 +440,7 @@ class PyTorchModel(BaseModel, abc.ABC):
                 self.criterion_name = next(iter(criterion_dict.keys()))
             self.criterion = criterion_dict[self.criterion_name]
 
-    def save(self, path: str) -> None:
+    def save(self, directory: str = None) -> None:
         state_dict = {
             "model_state_dict": self.model.state_dict(),
             "model_params": self.model_params,
@@ -423,18 +448,24 @@ class PyTorchModel(BaseModel, abc.ABC):
             "criterion_name": self.criterion_name,
             "is_binary": self.is_binary,
         }
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
 
+        config_path = os.path.join(directory, f"{type(self).name}.pth")
         additional_state = self._get_additional_state()
         if additional_state:
             state_dict.update(additional_state)
 
-        torch.save(state_dict, path)
+        torch.save(state_dict, config_path)
 
     def _get_additional_state(self) -> dict[str, Any]:
         return {}
 
-    def load(self, path: str) -> "PyTorchModel":
-        checkpoint = torch.load(path, map_location=self.device)
+    def load(self, directory: str = None) -> "PyTorchModel":
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
+        config_path = os.path.join(directory, f"{type(self).name}.pth")
+        checkpoint = torch.load(config_path, map_location=self.device)
 
         self.model_params = checkpoint["model_params"]
         self.optimizer_name = checkpoint["optimizer_name"]

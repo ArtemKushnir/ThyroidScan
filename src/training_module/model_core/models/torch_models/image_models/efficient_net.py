@@ -11,10 +11,10 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 @ModelRegistry.register("efficient_net_image")
 class ThyroidEfficientNetModel(PyTorchModel):
+    name = "efficient_net_image"
+
     def __init__(
         self,
-        optimizer: str = "adam",
-        criterion: str = "bce_logit",
         model_params: Optional[dict[str, Any]] = None,
         is_binary: bool = True,
         model_name: str = "efficientnet-b0",
@@ -23,7 +23,7 @@ class ThyroidEfficientNetModel(PyTorchModel):
         n_input_channels: int = 1,
         num_classes: int = 1,
     ):
-        super().__init__(optimizer, criterion, model_params, is_binary)
+        super().__init__(model_params, is_binary)
 
         self.model_name = model_name
         self.pretrained = pretrained
