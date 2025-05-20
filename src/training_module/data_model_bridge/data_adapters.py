@@ -2,7 +2,7 @@ import abc
 from typing import Any, Callable, Optional, Type, Union
 
 import numpy as np
-from monai.transforms import Compose, RandFlip, RandGaussianNoise
+from monai.transforms import Compose, EnsureChannelFirst, Lambda, Resize
 from torch.utils.data import DataLoader
 
 from src.image_data.image_data import Image
@@ -44,25 +44,36 @@ class BaseDataAdapter(abc.ABC):
         if label:
             self._convert_image_labels()
 
-    @abc.abstractmethod
     def prepare(self) -> None:
+        self._prepare()
+        self._preprocessed = True
+
+    @abc.abstractmethod
+    def _prepare(self) -> None:
         pass
 
     @property
     def data(self) -> Any:
+        if not self._preprocessed:
+            raise ValueError("Call 'prepare' before receiving the data")
         return self._data
 
-    def _convert_tirads(self, tirads_string: str) -> int:
-        tirads_digits = "".join([ch for ch in tirads_string if ch.isdigit()])
-        if tirads_digits == "":
-            raise ValueError("'tirads' must contain a number")
-        tirads_numeric = int(tirads_digits)
-        if tirads_numeric < 0 or tirads_numeric > 5:
-            raise ValueError("'tirads' should be between 0 and 5")
-        if self._is_bin_classification:
-            return 1 if tirads_numeric >= 4 else 0
+    def _convert_tirads(self, tirads: Any) -> int:
+        if isinstance(tirads, int):
+            return tirads
+        elif isinstance(tirads, str):
+            tirads_digits = "".join([ch for ch in tirads if ch.isdigit()])
+            if tirads_digits == "":
+                raise ValueError("'tirads' must contain a number")
+            tirads_numeric = int(tirads_digits)
+            if tirads_numeric < 0 or tirads_numeric > 5:
+                raise ValueError("'tirads' should be between 0 and 5")
+            if self._is_bin_classification:
+                return 1 if tirads_numeric >= 4 else 0
+            else:
+                return tirads_numeric
         else:
-            return tirads_numeric
+            raise TypeError(f"Unsupportable type {type(tirads)}")
 
     def _convert_image_labels(self) -> None:
         for img in self.images:
@@ -80,7 +91,7 @@ class BaseDataAdapter(abc.ABC):
 class SklearnDataAdapter(BaseDataAdapter):
     """DataAdapter for sklearn compatible models"""
 
-    def prepare(self) -> None:
+    def _prepare(self) -> None:
         X = np.array([list(img.features.values()) for img in self.images])  # type: ignore
         if self.label:
             y = np.array([img.metadata["tirads"] for img in self.images])  # type: ignore
@@ -93,14 +104,17 @@ class SklearnDataAdapter(BaseDataAdapter):
 class PytorchDataAdapter(BaseDataAdapter):
     dataset_cls: Optional[Type[CustomDataset]] = None
 
-    def __init__(self, batch_size: int, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, batch_size: int = 32, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.batch_size = batch_size
-        self.transforms: Compose = Compose(
-            [RandFlip(spatial_axis=1, prob=0.5), RandGaussianNoise(prob=0.2, mean=0.0, std=0.1)]
+        self.transforms = Compose(
+            [
+                Lambda(lambda img: img[np.newaxis, ...]),
+                Resize(spatial_size=(256, 256)),
+            ]
         )
 
-    def prepare(self) -> None:
+    def _prepare(self) -> None:
         if self.dataset_cls is None:
             raise ValueError("Missing dataset")
         dataset = self.dataset_cls(images=self.images, transform=self.transforms, label=self.label)

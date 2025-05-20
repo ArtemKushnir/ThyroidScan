@@ -17,7 +17,7 @@ class PytorchDatasetMixin:
     def _get_pixels(self, index: int) -> torch.Tensor:
         img = self.images[index]
 
-        image_tensor = torch.from_numpy(img.org_image).float()
+        image_tensor = torch.from_numpy(img.cropped_image).float()
         if self.transform is not None:
             image_tensor = self.transform(image_tensor)
         return image_tensor
