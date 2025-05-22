@@ -21,10 +21,7 @@ class TransformPlugin(abc.ABC):
 
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         self._check_fit()
-        df = self._transform(df)
-        if self.target_column in df.columns:
-            return df.drop(columns=[self.target_column])
-        return df
+        return self._transform(df)
 
     @abc.abstractmethod
     def _transform(self, df: pd.DataFrame) -> pd.DataFrame:
