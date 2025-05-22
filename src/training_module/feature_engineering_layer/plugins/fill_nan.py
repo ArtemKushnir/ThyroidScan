@@ -13,7 +13,7 @@ class FillNan(TransformPlugin):
 
     _strategies = ["mean", "median", "mode", "zero", "constant"]
 
-    def __init__(self, strategy:str ="mean", fill_value: Optional[float]=None) -> None:
+    def __init__(self, strategy: str = "mean", fill_value: Optional[float] = None) -> None:
         super().__init__()
         if strategy not in self._strategies:
             raise ValueError(f"Strategy '{strategy}' is not supported. Choose from {self._strategies}")
