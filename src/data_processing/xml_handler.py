@@ -19,32 +19,33 @@ class XMLHandler:
     representations of images with masks.
     """
 
-    def __init__(self, xml_dir: str, images_dir: str) -> None:
+    def __init__(self, xml_dir: str, images_dir: str, only_with_tirads: bool = False) -> None:
         """
         Initializes the handler with directories containing XML files and source images.
 
         :param xml_dir: Path to the directory containing XML annotation files.
         :param images_dir: Path to the directory containing source image files.
+        :param only_with_tirads: If true, skips any XML entries that do not include a TIRADS score, else TIRADS score = 0.
         """
         self._check_directory(xml_dir, images_dir)
 
         self.xml_dir = Path(xml_dir)
         self.images_dir = Path(images_dir)
+        self.only_with_tirads = self._check_label(only_with_tirads)
 
-    def create_images_with_masks(self) -> list:
+    def create_images_with_masks(self) -> list[Image]:
         """
         Parses all XML files in the directory and creates a list of image objects with associated masks and metadata.
-
-        Skips any XML entries that do not include a TIRADS score.
 
         :return: List of Image objects with masks and metadata.
         """
         images_list = []
         for xml_file in self.xml_dir.glob("*.xml"):
             images_list.extend(self._create_images_by_xml(xml_file))
+
         return images_list
 
-    def _create_images_by_xml(self, xml_file: Path) -> list:
+    def _create_images_by_xml(self, xml_file: Path) -> list[Image]:
         """
         Parses a single XML file and extracts all annotated images from it.
 
@@ -68,14 +69,17 @@ class XMLHandler:
             "echogenicity": root.findtext("echogenicity") or None,
             "margins": root.findtext("margins") or None,
             "calcifications": root.findtext("calcifications") or None,
-            "tirads": root.findtext("tirads") or None,
+            "target": root.findtext("tirads") or None,
             "reportbacaf": root.findtext("reportbacaf") or None,
             "reporteco": root.findtext("reporteco") or None,
         }
 
-        if metadata["tirads"] is None:
-            print(f"Skipping {xml_file.name}: no TIRADS.")
-            return []
+        if metadata["target"] is None:
+            if self.only_with_tirads:
+                print(f"Skipping {xml_file.name}: no TIRADS.")
+                return []
+            else:
+                metadata["target"] = "0"
 
         images = []
 
@@ -103,7 +107,8 @@ class XMLHandler:
 
         return images
 
-    def _create_image(self, image_path: Path, svg_data: str, image_name: str, metadata: dict) -> Optional[Image]:
+    @staticmethod
+    def _create_image(image_path: Path, svg_data: str, image_name: str, metadata: dict) -> Optional[Image]:
         """
         Creates an Image object with a binary mask generated from the SVG polygon annotation.
 
@@ -149,3 +154,15 @@ class XMLHandler:
             raise FileNotFoundError(f"Directory not found. Check xml directory path.")
         if not Path(images_dir).exists():
             raise FileNotFoundError(f"Directory not found. Check images directory path.")
+
+    @staticmethod
+    def _check_label(label: bool) -> bool:
+        """
+        Checks if label has bool type.
+
+        :param label: only _with_tirads or not.
+        :return: label.
+        """
+        if not isinstance(label, bool):
+            raise TypeError("only_with_tirads must be true or false.")
+        return label
