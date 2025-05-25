@@ -107,6 +107,8 @@ class Cropper(BaseEstimator, TransformerMixin):
         """
         Detects whether the cropped image contains two objects side by side.
         """
+        EPS = 25
+
         sobel_x = cv2.Sobel(cropped_image, cv2.CV_64F, 1, 0, ksize=3)
         sobel_x = np.absolute(sobel_x)
         sobel_x = (255 * sobel_x / np.max(sobel_x)).astype(np.uint8)
@@ -120,6 +122,12 @@ class Cropper(BaseEstimator, TransformerMixin):
             return None
         left_part = cropped_image[:, :peak_arg]
         right_part = cropped_image[:, peak_arg:]
+
+        min_size = cropped_image.shape[1] / 2 - EPS
+
+        if left_part.shape[1] < min_size or right_part.shape[1] < min_size:
+            return None
+
         return left_part, right_part
 
     @staticmethod
@@ -175,9 +183,10 @@ class Cropper(BaseEstimator, TransformerMixin):
         """
         Validates that the crop radius is an integer in an acceptable range.
         """
+        CONST = 50
         if not isinstance(radius, int):
             raise TypeError("Radius must be int.")
-        if radius < 0 or radius > 50:
+        if radius < 0 or radius > CONST:
             raise ValueError("Radius must be positive and <= 50.")
         return radius
 
