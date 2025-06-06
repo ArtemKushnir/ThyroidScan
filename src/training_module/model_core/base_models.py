@@ -39,6 +39,7 @@ class BaseModel(abc.ABC):
     DEFAULT_BINARY_MODEL_DIR = "../pipeline_artifacts/model_artifacts/binary_classification"
     DEFAULT_MULTICLASS_MODEL_DIR = "../pipeline_artifacts/model_artifacts/multiclass_classification"
     name = ""
+    _data_adapter_type = ""
 
     def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True):
         self.model_params: dict[str, Any] = model_params or {}
