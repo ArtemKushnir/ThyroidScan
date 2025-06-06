@@ -12,8 +12,9 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 
 @ModelRegistry.register("dense_net_image")
-class ThyroidDenseNetModel(PyTorchModel):
+class DenseNetImageModel(PyTorchModel):
     name = "dense_net_image"
+    _data_adapter_type = "image"
 
     def __init__(
         self,

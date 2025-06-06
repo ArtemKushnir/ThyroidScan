@@ -2,6 +2,7 @@ from typing import Any, Callable, Optional
 
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
 from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter
 from src.training_module.model_core.base_models import PyTorchModel
@@ -10,12 +11,13 @@ from src.training_module.model_core.models.torch_models.hybrid_models.hybrid_blo
 
 
 @ModelRegistry.register("dense_net_hybrid")
-class DenseNetThyroidModel(PyTorchModel):
+class DenseNetHybridModel(PyTorchModel):
     """
     DenseNet121-based model for thyroid disease classification
     """
 
     name = "dense_net_hybrid"
+    _data_adapter_type = "hybrid"
 
     def __init__(
         self,
@@ -23,15 +25,14 @@ class DenseNetThyroidModel(PyTorchModel):
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 10,
+        num_statistical_features: int = 141,
         pretrained: bool = True,
     ):
-        # Update default model params with SOTA settings
         default_params = {
-            "epoch": 30,
-            "optim": {"lr": 0.0003, "weight_decay": 1e-5},
+            "epoch": 10,
+            "optim": {"name": "adam", "lr": 0.0001, "weight_decay": 1e-5},
+            "criterion": {"name": "focal"},
             "normalize": True,
-            "scheduler": "cosine",
         }
 
         if model_params:
@@ -48,8 +49,6 @@ class DenseNetThyroidModel(PyTorchModel):
         self.model = self._create_model()
 
         self.preprocessing = self._initialize_preprocessing()
-
-        self.scheduler = None
 
     def _create_model(self) -> nn.Module:
         return DenseNet121Thyroid(
@@ -81,25 +80,25 @@ class DenseNetThyroidModel(PyTorchModel):
 
         return preprocessing
 
+    def _prepare_input(self, batch_data: Any) -> tuple[dict[str, Any], torch.Tensor]:
+        if isinstance(batch_data, dict):
+            X_data = {"pixels": batch_data["pixels"], "features": batch_data["features"]}
+            y = batch_data["label"].to(self.device) if "label" in batch_data else torch.tensor([])
+        else:
+            raise ValueError(f"Unsupported batch data format: {type(batch_data)}")
+
+        return X_data, y
+
     def fit(self, train_adapter: "BaseDataAdapter", test_adapter: Optional["BaseDataAdapter"] = None) -> "PyTorchModel":
         train_loader = train_adapter.data
 
         self.model = self.model.to(self.device)
 
-        optimizer = self.optimizer(self.model.parameters(), **self.model_params["optim"])
+        optim_params = dict(filter(lambda item: item[0] != "name", self.model_params["optim"].items()))
+
+        optimizer = self.optimizer(self.model.parameters(), **optim_params)
         criterion = self.criterion()
         epochs = self.model_params.get("epoch", 10)
-
-        # Initialize scheduler
-        scheduler_type = self.model_params.get("scheduler", None)
-        if scheduler_type == "cosine":
-            scheduler: Any = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
-        elif scheduler_type == "plateau":
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=3)
-        elif scheduler_type == "step":
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
-        else:
-            scheduler = None
 
         for epoch in range(epochs):
             train_loss = self.train_loop(train_loader, self.model, criterion, optimizer)
@@ -109,13 +108,6 @@ class DenseNetThyroidModel(PyTorchModel):
                 val_loss = metrics["loss"]
             else:
                 val_loss, metrics = 0.0, {}
-
-            # Update scheduler
-            if scheduler is not None:
-                if scheduler_type == "plateau":
-                    scheduler.step(val_loss)
-                else:
-                    scheduler.step()
 
             self.history["train_loss"].append(train_loss)
             self.history["val_loss"].append(val_loss)

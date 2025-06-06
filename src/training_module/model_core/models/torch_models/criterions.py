@@ -6,6 +6,7 @@ BINARY_CRITERION = {
     "soft_bce_with_logits": SoftBCEWithLogitsLoss,
     "focal": BinaryFocalLoss,
     "dice": DiceLoss,
+    "cross_entropy": CrossEntropyLoss,
 }
 
 MULTICLASS_CRITERION = {

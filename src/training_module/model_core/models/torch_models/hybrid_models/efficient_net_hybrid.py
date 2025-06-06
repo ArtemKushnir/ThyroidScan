@@ -13,12 +13,13 @@ from src.training_module.model_core.models.torch_models.hybrid_models.hybrid_blo
 
 
 @ModelRegistry.register("efficient_net_hybrid")
-class EfficientNetThyroidModel(PyTorchModel):
+class EfficientNetHybridModel(PyTorchModel):
     """
     EfficientNet-based model for thyroid disease classification
     """
 
     name = "efficient_net_hybrid"
+    _data_adapter_type = "hybrid"
 
     def __init__(
         self,
@@ -26,7 +27,7 @@ class EfficientNetThyroidModel(PyTorchModel):
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 10,
+        num_statistical_features: int = 141,
         model_variant: str = "b0",
         pretrained: bool = True,
         mixup_alpha: float = 0.2,
@@ -34,7 +35,8 @@ class EfficientNetThyroidModel(PyTorchModel):
         # Update default model params with SOTA settings
         default_params = {
             "epoch": 40,
-            "optim": {"lr": 0.0002, "weight_decay": 1e-4},
+            "optim": {"name": "sgd", "lr": 0.0002, "weight_decay": 1e-4},
+            "criterion": {"name": "focal"},
             "normalize": True,
             "scheduler": "cosine",
         }
@@ -103,11 +105,21 @@ class EfficientNetThyroidModel(PyTorchModel):
         y_a, y_b = y, y[index]
         return mixed_x, y_a, y_b, lam
 
+    @staticmethod
     def _mixup_criterion(
-        self, criterion: Callable, pred: torch.Tensor, y_a: torch.Tensor, y_b: torch.Tensor, lam: float
+        criterion: Callable, pred: torch.Tensor, y_a: torch.Tensor, y_b: torch.Tensor, lam: float
     ) -> float:
         """Mixup loss calculation"""
         return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
+
+    def _prepare_input(self, batch_data: Any) -> tuple[Any, torch.Tensor]:
+        if isinstance(batch_data, dict):
+            X_data = {"pixels": batch_data["pixels"], "features": batch_data["features"]}
+            y = batch_data["label"].to(self.device) if "label" in batch_data else torch.tensor([])
+        else:
+            raise ValueError(f"Unsupported batch data format: {type(batch_data)}")
+
+        return X_data, y
 
     def train_loop(
         self, dataloader: DataLoader, model: nn.Module, loss_fn: nn.Module, optimizer: torch.optim.Optimizer
@@ -142,23 +154,14 @@ class EfficientNetThyroidModel(PyTorchModel):
 
                 loss = loss_fn(pred, y)
 
-            loss.backward()
+            loss.backward()  # type: ignore
 
             # Gradient clipping
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
             optimizer.step()
 
-            if isinstance(X, dict):
-                batch_size = X["pixels"].size(0)
-            else:
-                batch_size = X.size(0)
-
-            running_loss += loss.item() * batch_size
-
-            if batch % 100 == 0:
-                current = batch * batch_size
-                print(f"loss: {loss.item():>7f}  [{current:>5d}/{size:>5d}]")
+            running_loss += loss.item()  # type: ignore
 
         return running_loss / size
 
@@ -168,7 +171,9 @@ class EfficientNetThyroidModel(PyTorchModel):
 
         self.model = self.model.to(self.device)
 
-        optimizer = self.optimizer(self.model.parameters(), **self.model_params["optim"])
+        optim_params = dict(filter(lambda item: item[0] != "name", self.model_params["optim"].items()))
+
+        optimizer = self.optimizer(self.model.parameters(), **optim_params)
         criterion = self.criterion()
         epochs = self.model_params.get("epoch", 10)
 

@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.transforms as transforms
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from torch.utils.data import DataLoader
 
@@ -12,7 +13,7 @@ from src.training_module.model_core.base_models import PyTorchModel
 from src.training_module.model_core.model_registry import ModelRegistry
 
 
-class ThyroidNet(nn.Module):
+class CustomNet(nn.Module):
     """
     Neural network for thyroid disease classification using both image and statistical features.
     The model processes images through a CNN branch and statistical features through an MLP branch,
@@ -23,11 +24,12 @@ class ThyroidNet(nn.Module):
         self,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 10,
+        num_statistical_features: int = 141,
         num_classes: int = 1,
         dropout_rate: float = 0.5,
     ):
-        super(ThyroidNet, self).__init__()
+        super(CustomNet, self).__init__()
+        self.num_statistical_features = num_statistical_features
 
         self.cnn_branch = nn.Sequential(
             nn.Conv2d(img_channels, 32, kernel_size=3, padding=1),
@@ -95,21 +97,22 @@ class ThyroidNet(nn.Module):
 
 
 @ModelRegistry.register("cnn_mlp_hybrid")
-class ThyroidClassificationModel(PyTorchModel):
+class CNNMLPModel(PyTorchModel):
     """
     PyTorch model for thyroid disease classification using both US images and statistical features.
     This model implements the PyTorchModel interface.
     """
 
     name = "cnn_mlp_hybrid"
+    _data_adapter_type = "hybrid"
 
     def __init__(
         self,
         model_params: Optional[Dict[str, Any]] = None,
         is_binary: bool = True,
         img_channels: int = 1,
-        img_size: int = 224,
-        num_statistical_features: int = 10,
+        img_size: int = 64,
+        num_statistical_features: int = 141,
     ):
         super().__init__(model_params, is_binary)
 
@@ -118,12 +121,18 @@ class ThyroidClassificationModel(PyTorchModel):
         self.num_statistical_features = num_statistical_features
         self.num_classes = 1 if is_binary else 6  # Assuming TIRADS 0-5 for multiclass
 
-        self.model = self._create_model()
+        self.image_transform = transforms.Compose(
+            [
+                transforms.Resize((self.img_size, self.img_size)),  # Resize images to expected dimensions
+                transforms.Lambda(lambda x: x if x.shape[1] == self.img_channels else x.mean(dim=1, keepdim=True)),
+            ]
+        )
 
+        self.model = self._create_model()
         self.preprocessing = self._initialize_preprocessing()
 
     def _create_model(self) -> nn.Module:
-        return ThyroidNet(
+        return CustomNet(
             img_channels=self.img_channels,
             img_size=self.img_size,
             num_statistical_features=self.num_statistical_features,
@@ -139,6 +148,17 @@ class ThyroidClassificationModel(PyTorchModel):
 
         return preprocessing
 
+    def _resize_image(self, img: torch.Tensor) -> torch.Tensor:
+        batch_size = img.shape[0]
+        resized_imgs = []
+
+        for i in range(batch_size):
+            single_img = img[i : i + 1]
+            resized_img = self.image_transform(single_img)
+            resized_imgs.append(resized_img)
+
+        return torch.cat(resized_imgs, dim=0)
+
     @staticmethod
     def _normalize_images(batch_data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         if "pixels" in batch_data:
@@ -152,22 +172,20 @@ class ThyroidClassificationModel(PyTorchModel):
             features = batch_data["features"].to(self.device) if "features" in batch_data else None
             y = batch_data["label"].to(self.device) if "label" in batch_data else torch.tensor([])
 
+            if pixels.shape[2] != self.img_size or pixels.shape[3] != self.img_size:
+                pixels = self._resize_image(pixels)
+
+            if pixels.shape[1] != self.img_channels:
+                if self.img_channels == 1 and pixels.shape[1] > 1:
+                    pixels = pixels.mean(dim=1, keepdim=True)
+                elif self.img_channels > 1 and pixels.shape[1] == 1:
+                    pixels = pixels.repeat(1, self.img_channels, 1, 1)
+
             for transform in self.preprocessing:
                 pixels = transform({"pixels": pixels})["pixels"]
 
             X = {"pixels": pixels, "features": features}
 
-        elif isinstance(batch_data, (list, tuple)) and len(batch_data) >= 2:
-            X_data, y = batch_data[0], batch_data[1]
-
-            if isinstance(X_data, dict):
-                X = {"pixels": X_data["pixels"].to(self.device), "features": X_data["features"].to(self.device)}
-                y = y.to(self.device) if y is not None else torch.tensor([])
-
-                for transform in self.preprocessing:
-                    X = transform(X)
-            else:
-                raise ValueError("For tuple input, the first element must be a dict with 'pixels' and 'features'")
         else:
             raise ValueError(f"Unsupported batch data format: {type(batch_data)}")
 
@@ -184,3 +202,10 @@ class ThyroidClassificationModel(PyTorchModel):
         self.img_channels = checkpoint.get("img_channels", self.img_channels)
         self.img_size = checkpoint.get("img_size", self.img_size)
         self.num_statistical_features = checkpoint.get("num_statistical_features", self.num_statistical_features)
+
+        self.image_transform = transforms.Compose(
+            [
+                transforms.Resize((self.img_size, self.img_size)),
+                transforms.Lambda(lambda x: x if x.shape[1] == self.img_channels else x.mean(dim=1, keepdim=True)),
+            ]
+        )

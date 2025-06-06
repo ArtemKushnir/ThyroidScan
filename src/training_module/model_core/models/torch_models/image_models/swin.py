@@ -10,7 +10,7 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 
 @ModelRegistry.register("swin_image")
-class ThyroidSwinModel(PyTorchModel):
+class SwinImageModel(PyTorchModel):
     """
     Swin Transformer implementation for thyroid ultrasound classification.
     Swin Transformer uses shifted windows for self-attention, which is effective
@@ -18,6 +18,7 @@ class ThyroidSwinModel(PyTorchModel):
     """
 
     name = "swin_image"
+    _data_adapter_type = "image"
 
     def __init__(
         self,
