@@ -9,7 +9,7 @@ import pandas as pd
 class TransformPlugin(abc.ABC):
     def __init__(self) -> None:
         self._is_fit = False
-        self.target_column = "tirads"
+        self.target_column = "target"
 
     def fit(self, df: pd.DataFrame) -> None:
         self._fit(df)
