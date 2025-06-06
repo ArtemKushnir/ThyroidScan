@@ -1,0 +1,71 @@
+model_name: random_forest
+parameters:
+  bootstrap:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  max_depth:
+    high: 20
+    log: false
+    low: 3
+    type: int
+    values:
+    - 5
+    - 10
+    - 15
+    - 20
+  max_features:
+    log: false
+    options:
+    - sqrt
+    - log2
+    type: categorical
+    values:
+    - sqrt
+    - log2
+  min_samples_leaf:
+    high: 10
+    log: false
+    low: 1
+    type: int
+    values:
+    - 1
+    - 2
+    - 4
+    - 8
+  min_samples_split:
+    high: 20
+    log: false
+    low: 2
+    type: int
+    values:
+    - 2
+    - 5
+    - 10
+    - 15
+  n_estimators:
+    high: 500
+    log: false
+    low: 50
+    type: int
+    values:
+    - 50
+    - 100
+    - 200
+    - 300
+    - 500
+tuner_configs:
+  sklearn_gridsearch:
+    cv: 3
+    n_jobs: -1
+    scoring: f1
+  sklearn_optuna:
+    cv: 3
+    direction: maximize
+    n_trials: 300
+    scoring: f1

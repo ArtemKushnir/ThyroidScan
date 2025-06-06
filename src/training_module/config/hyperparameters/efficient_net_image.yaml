@@ -1,0 +1,317 @@
+model_name: efficient_net_image
+parameters:
+  augmentation_strength:
+    log: false
+    options:
+    - none
+    - light
+    - medium
+    - strong
+    - autoaugment
+    type: categorical
+    values:
+    - none
+    - light
+    - medium
+    - strong
+    - autoaugment
+  batch_size:
+    log: false
+    options:
+    - 4
+    - 8
+    - 16
+    - 32
+    type: categorical
+    values:
+    - 4
+    - 8
+    - 16
+    - 32
+  criterion.focal_alpha:
+    high: 2.0
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.25
+    - 0.5
+    - 0.75
+    - 1.0
+    - 1.5
+    - 2.0
+  criterion.focal_gamma:
+    high: 3.0
+    log: false
+    low: 0.5
+    type: float
+    values:
+    - 0.5
+    - 1.0
+    - 1.5
+    - 2.0
+    - 2.5
+    - 3.0
+  criterion.label_smoothing:
+    high: 0.3
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.3
+  criterion.name:
+    log: false
+    options:
+    - focal
+    type: categorical
+    values:
+    - focal
+  cutmix_alpha:
+    high: 1.0
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.2
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1.0
+  dropout_rate:
+    high: 0.6
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+  early_stopping_patience:
+    high: 25
+    log: false
+    low: 8
+    type: int
+    values:
+    - 8
+    - 12
+    - 15
+    - 20
+    - 25
+  ema_decay:
+    high: 0.9999
+    log: false
+    low: 0.999
+    type: float
+    values:
+    - 0.999
+    - 0.9995
+    - 0.9999
+  epochs:
+    high: 120
+    log: false
+    low: 15
+    type: int
+    values:
+    - 15
+    - 25
+    - 40
+    - 60
+    - 80
+    - 100
+    - 120
+  gradient_clip_value:
+    high: 5.0
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.5
+    - 1.0
+    - 2.0
+    - 3.0
+    - 5.0
+  image_normalization:
+    log: false
+    options:
+    - imagenet
+    - custom
+    - none
+    type: categorical
+    values:
+    - imagenet
+    - custom
+    - none
+  mixup_alpha:
+    high: 1.0
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.2
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1.0
+  model_name:
+    log: false
+    options:
+    - efficientnet-b0
+    - efficientnet-b1
+    - efficientnet-b2
+    - efficientnet-b3
+    - efficientnet-b4
+    type: categorical
+    values:
+    - efficientnet-b0
+    - efficientnet-b1
+    - efficientnet-b2
+    - efficientnet-b3
+    - efficientnet-b4
+  optim.lr:
+    high: 0.01
+    log: true
+    low: 1.0e-06
+    type: float
+    values:
+    - 1.0e-06
+    - 5.0e-06
+    - 1.0e-05
+    - 2.0e-05
+    - 5.0e-05
+    - 0.0001
+    - 0.0002
+    - 0.0005
+    - 0.001
+    - 0.005
+    - 0.01
+  optim.name:
+    log: false
+    options:
+    - adam
+    - adamw
+    - sgd
+    - rmsprop
+    type: categorical
+    values:
+    - adam
+    - adamw
+    - sgd
+    - rmsprop
+  scheduler.T_max:
+    high: 50
+    log: false
+    low: 10
+    type: int
+    values:
+    - 10
+    - 20
+    - 30
+    - 40
+    - 50
+  scheduler.gamma:
+    high: 0.9
+    log: false
+    low: 0.05
+    type: float
+    values:
+    - 0.05
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.5
+    - 0.7
+    - 0.9
+  scheduler.step_size:
+    high: 25
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 8
+    - 10
+    - 15
+    - 20
+    - 25
+  scheduler.type:
+    log: false
+    options:
+    - CosineAnnealingLR
+    - CosineAnnealingWarmRestarts
+    - ReduceLROnPlateau
+    - StepLR
+    - ExponentialLR
+    type: categorical
+    values:
+    - CosineAnnealingLR
+    - CosineAnnealingWarmRestarts
+    - ReduceLROnPlateau
+    - StepLR
+    - ExponentialLR
+  stochastic_depth_rate:
+    high: 0.3
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.25
+    - 0.3
+  use_ema:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  warmup_epochs:
+    high: 10
+    log: false
+    low: 0
+    type: int
+    values:
+    - 0
+    - 2
+    - 5
+    - 8
+    - 10
+  weight_decay:
+    high: 0.1
+    log: true
+    low: 1.0e-06
+    type: float
+    values:
+    - 1.0e-06
+    - 1.0e-05
+    - 0.0001
+    - 0.001
+    - 0.01
+    - 0.05
+    - 0.1
+tuner_configs:
+  pytorch_optuna:
+    direction: maximize
+    n_trials: 75
+    random_state: 42
+    scoring: f1
+    timeout: 10800
+    val_size: 0.2
