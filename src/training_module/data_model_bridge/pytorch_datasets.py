@@ -33,7 +33,7 @@ class PytorchDatasetMixin:
         img = self.images[index]
         if img.metadata is None:
             raise ValueError("Missing metadata")
-        label = torch.tensor(img.metadata["tirads"])
+        label = torch.tensor(img.metadata["target"])
         return label
 
 
