@@ -108,7 +108,7 @@ class BaseModel(abc.ABC):
             X_test, y_test = test_data
             y_pred = self.predict(data_adapter)
 
-            if data_adapter.is_bin_classification:
+            if data_adapter._is_bin_classification:
                 metrics = {
                     "accuracy": accuracy_score(y_test, y_pred),
                     "precision": precision_score(y_test, y_pred),
