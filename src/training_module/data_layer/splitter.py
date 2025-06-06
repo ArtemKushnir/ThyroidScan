@@ -23,8 +23,8 @@ class Splitter:
         if stratify:
             stratify_labels: Any = []
             for img in self.images:
-                if img.metadata and "tirads" in img.metadata:
-                    stratify_labels.append(img.metadata["tirads"])
+                if img.metadata and "target" in img.metadata:
+                    stratify_labels.append(img.metadata["target"])
                 else:
                     stratify = False
                     break

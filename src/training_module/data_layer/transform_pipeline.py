@@ -34,7 +34,7 @@ class TransformPipeline:
         for plugin in self.transform_plugins:
             plugin.fit(curr_df)
             curr_df = plugin.transform(curr_df)
-            curr_df["tirads"] = df["tirads"]
+            curr_df["target"] = df["target"]
         self.is_fitted = True
 
     def transform(self, images: list[Image]) -> None:
@@ -56,7 +56,7 @@ class TransformPipeline:
     def _get_df(self, images: list[Image]) -> pd.DataFrame:
         df = pd.DataFrame([image.features for image in images])
         if not self.is_fitted:
-            df["tirads"] = np.array([image.metadata["tirads"] for image in images])  # type: ignore
+            df["target"] = np.array([image.metadata["target"] for image in images])  # type: ignore
         return df
 
     @staticmethod
