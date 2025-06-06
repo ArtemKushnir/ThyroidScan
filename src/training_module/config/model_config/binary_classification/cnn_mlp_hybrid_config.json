@@ -1,0 +1,1 @@
+{"model": {"name": "cnn_mlp_hybrid", "is_binary": true, "model_params": {"epoch": 10, "optim": {"lr": 0.001, "name": "adam"}, "criterion": {"name": "focal"}}}}

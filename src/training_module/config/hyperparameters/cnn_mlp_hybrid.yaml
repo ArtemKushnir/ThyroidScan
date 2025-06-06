@@ -1,0 +1,350 @@
+model_name: cnn_mlp_hybrid
+parameters:
+  activation_function:
+    log: false
+    options:
+    - relu
+    - leaky_relu
+    - elu
+    - swish
+    type: categorical
+    values:
+    - relu
+    - leaky_relu
+    - elu
+    - swish
+  augmentation_strength:
+    log: false
+    options:
+    - none
+    - light
+    - medium
+    - strong
+    type: categorical
+    values:
+    - none
+    - light
+    - medium
+    - strong
+  batch_norm_momentum:
+    high: 0.2
+    log: false
+    low: 0.05
+    type: float
+    values:
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+  batch_size:
+    log: false
+    options:
+    - 8
+    - 16
+    - 32
+    - 64
+    - 128
+    type: categorical
+    values:
+    - 8
+    - 16
+    - 32
+    - 64
+    - 128
+  cnn_base_filters:
+    log: false
+    options:
+    - 16
+    - 32
+    - 64
+    type: categorical
+    values:
+    - 16
+    - 32
+    - 64
+  cnn_branch_weight:
+    high: 0.9
+    log: false
+    low: 0.3
+    type: float
+    values:
+    - 0.3
+    - 0.5
+    - 0.7
+    - 0.9
+  cnn_depth:
+    log: false
+    options:
+    - 3
+    - 4
+    - 5
+    - 6
+    type: categorical
+    values:
+    - 3
+    - 4
+    - 5
+    - 6
+  cnn_filter_multiplier:
+    log: false
+    options:
+    - 1.5
+    - 2.0
+    - 2.5
+    type: categorical
+    values:
+    - 1.5
+    - 2.0
+    - 2.5
+  criterion.name:
+    log: false
+    options:
+    - focal
+    type: categorical
+    values:
+    - focal
+  dropout_rate:
+    high: 0.7
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+    - 0.7
+  early_stopping_patience:
+    high: 20
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 10
+    - 15
+    - 20
+  epoch:
+    high: 50
+    log: false
+    low: 10
+    type: int
+    values:
+    - 10
+    - 20
+    - 30
+    - 40
+    - 50
+  feature_fusion_strategy:
+    log: false
+    options:
+    - concat
+    - attention
+    - gated
+    - weighted_sum
+    type: categorical
+    values:
+    - concat
+    - attention
+    - gated
+    - weighted_sum
+  grad_clip_norm:
+    high: 2.0
+    log: false
+    low: 0.5
+    type: float
+    values:
+    - 0.5
+    - 1.0
+    - 1.5
+    - 2.0
+  img_size:
+    log: false
+    options:
+    - 64
+    - 128
+    - 224
+    - 256
+    type: categorical
+    values:
+    - 64
+    - 128
+    - 224
+    - 256
+  l2_regularization:
+    high: 0.001
+    log: true
+    low: 1.0e-06
+    type: float
+    values:
+    - 1.0e-06
+    - 1.0e-05
+    - 0.0001
+    - 0.001
+  label_smoothing:
+    high: 0.2
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+  mixup_alpha:
+    high: 0.4
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+  normalize:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  onecycle.max_lr_multiplier:
+    high: 20.0
+    log: false
+    low: 5.0
+    type: float
+    values:
+    - 5.0
+    - 10.0
+    - 15.0
+    - 20.0
+  optim.lr:
+    high: 0.01
+    log: true
+    low: 1.0e-05
+    type: float
+    values:
+    - 1.0e-05
+    - 5.0e-05
+    - 0.0001
+    - 0.0002
+    - 0.0005
+    - 0.001
+    - 0.005
+    - 0.01
+  optim.name:
+    log: false
+    options:
+    - adam
+    - adamw
+    - sgd
+    type: categorical
+    values:
+    - adam
+    - adamw
+    - sgd
+  patience:
+    high: 15
+    log: false
+    low: 3
+    type: int
+    values:
+    - 3
+    - 5
+    - 7
+    - 10
+    - 15
+  plateau.factor:
+    high: 0.8
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.3
+    - 0.5
+    - 0.8
+  plateau.patience:
+    high: 8
+    log: false
+    low: 2
+    type: int
+    values:
+    - 2
+    - 3
+    - 5
+    - 8
+  pooling_strategy:
+    log: false
+    options:
+    - max
+    - avg
+    - adaptive_max
+    - adaptive_avg
+    type: categorical
+    values:
+    - max
+    - avg
+    - adaptive_max
+    - adaptive_avg
+  scheduler:
+    log: false
+    options:
+    - cosine
+    - onecycle
+    - plateau
+    - step
+    - null
+    type: categorical
+    values:
+    - cosine
+    - onecycle
+    - plateau
+    - step
+    - null
+  stat_branch_weight:
+    high: 0.7
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.3
+    - 0.5
+    - 0.7
+  step.gamma:
+    high: 0.9
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.3
+    - 0.5
+    - 0.7
+    - 0.9
+  step.step_size:
+    high: 20
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 10
+    - 15
+    - 20
+tuner_configs:
+  pytorch_optuna:
+    direction: maximize
+    n_trials: 20
+    random_state: 42
+    scoring: f1
+    timeout: 7200
+    val_size: 0.2

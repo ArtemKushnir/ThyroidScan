@@ -1,0 +1,150 @@
+model_name: se_resnet_image
+parameters:
+  augmentation_strength:
+    log: false
+    options:
+    - none
+    - light
+    - medium
+    - strong
+    type: categorical
+    values:
+    - none
+    - light
+    - medium
+    - strong
+  batch_size:
+    log: false
+    options:
+    - 8
+    - 16
+    - 32
+    - 64
+    type: categorical
+    values:
+    - 8
+    - 16
+    - 32
+    - 64
+  criterion.name:
+    log: false
+    options:
+    - focal
+    - cross_entropy
+    type: categorical
+    values:
+    - focal
+    - cross_entropy
+  dropout_rate:
+    high: 0.5
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+  early_stopping_patience:
+    high: 20
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 10
+    - 15
+    - 20
+  epochs:
+    high: 100
+    log: false
+    low: 10
+    type: int
+    values:
+    - 10
+    - 20
+    - 30
+    - 50
+    - 75
+    - 100
+  optimizer.lr:
+    high: 0.01
+    log: true
+    low: 1.0e-05
+    type: float
+    values:
+    - 1.0e-05
+    - 5.0e-05
+    - 0.0001
+    - 0.0002
+    - 0.0005
+    - 0.001
+    - 0.005
+    - 0.01
+  optimizer.name:
+    log: false
+    options:
+    - adam
+    - adamw
+    - sgd
+    type: categorical
+    values:
+    - adam
+    - adamw
+    - sgd
+  scheduler.gamma:
+    high: 0.9
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.3
+    - 0.5
+    - 0.7
+    - 0.9
+  scheduler.step_size:
+    high: 30
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 10
+    - 15
+    - 20
+    - 25
+    - 30
+  scheduler.type:
+    log: false
+    options:
+    - StepLR
+    - CosineAnnealingLR
+    - ReduceLROnPlateau
+    - ExponentialLR
+    type: categorical
+    values:
+    - StepLR
+    - CosineAnnealingLR
+    - ReduceLROnPlateau
+    - ExponentialLR
+  weight_decay:
+    high: 0.01
+    log: true
+    low: 1.0e-06
+    type: float
+    values:
+    - 1.0e-06
+    - 1.0e-05
+    - 0.0001
+    - 0.001
+    - 0.01
+tuner_configs:
+  pytorch_optuna:
+    direction: maximize
+    n_trials: 1
+    random_state: 42
+    scoring: f1
+    val_size: 0.2

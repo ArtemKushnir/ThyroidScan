@@ -1,0 +1,53 @@
+model_name: lgb
+parameters:
+  learning_rate:
+    high: 0.3
+    log: true
+    low: 0.01
+    type: float
+    values:
+    - 0.01
+    - 0.05
+    - 0.1
+    - 0.2
+  max_depth:
+    high: 10
+    log: false
+    low: 3
+    type: int
+    values:
+    - 3
+    - 5
+    - 7
+    - 10
+  n_estimators:
+    high: 1000
+    log: false
+    low: 100
+    type: int
+    values:
+    - 100
+    - 300
+    - 500
+    - 700
+    - 1000
+  reg_lambda:
+    high: 10.0
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 1.0
+    - 5.0
+    - 10.0
+tuner_configs:
+  sklearn_gridsearch:
+    cv: 3
+    n_jobs: -1
+    scoring: f1
+  sklearn_optuna:
+    cv: 3
+    direction: maximize
+    n_trials: 100
+    scoring: f1

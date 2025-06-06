@@ -1,0 +1,73 @@
+model_name: catboost
+parameters:
+  depth:
+    high: 10
+    log: false
+    low: 4
+    type: int
+    values:
+    - 4
+    - 6
+    - 8
+    - 10
+  iterations:
+    high: 1000
+    log: false
+    low: 100
+    type: int
+    values:
+    - 100
+    - 300
+    - 500
+    - 700
+    - 1000
+  l2_leaf_reg:
+    high: 10.0
+    log: false
+    low: 1.0
+    type: float
+    values:
+    - 1.0
+    - 3.0
+    - 5.0
+    - 10.0
+  learning_rate:
+    high: 0.3
+    log: true
+    low: 0.001
+    type: float
+    values:
+    - 0.001
+    - 0.01
+    - 0.03
+    - 0.1
+    - 0.2
+  random_strength:
+    high: 5.0
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 1.0
+    - 2.0
+    - 5.0
+  subsample:
+    high: 1.0
+    log: false
+    low: 0.6
+    type: float
+    values:
+    - 0.6
+    - 0.8
+    - 1.0
+tuner_configs:
+  sklearn_gridsearch:
+    cv: 5
+    n_jobs: -1
+    scoring: f1
+  sklearn_optuna:
+    cv: 5
+    direction: maximize
+    n_trials: 100
+    scoring: f1

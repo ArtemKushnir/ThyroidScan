@@ -1,0 +1,367 @@
+model_name: swin_image
+parameters:
+  attention_dropout:
+    high: 0.3
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.3
+  augmentation_strength:
+    log: false
+    options:
+    - none
+    - light
+    - medium
+    - strong
+    - medical
+    type: categorical
+    values:
+    - none
+    - light
+    - medium
+    - strong
+    - medical
+  batch_size:
+    log: false
+    options:
+    - 2
+    - 4
+    type: categorical
+    values:
+    - 2
+    - 4
+  criterion.name:
+    log: false
+    options:
+    - focal
+    - cross_entropy
+    type: categorical
+    values:
+    - focal
+    - cross_entropy
+  cutmix_alpha:
+    high: 1.0
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.2
+    - 0.4
+    - 0.6
+    - 0.8
+    - 1.0
+  depths:
+    log: false
+    options:
+    - '[2,2,6,2]'
+    - '[2,2,18,2]'
+    - '[2,6,18,6]'
+    - '[3,3,9,3]'
+    type: categorical
+    values:
+    - '[2,2,6,2]'
+    - '[2,2,18,2]'
+    - '[2,6,18,6]'
+    - '[3,3,9,3]'
+  dropout_rate:
+    high: 0.6
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.5
+    - 0.6
+  embed_dim:
+    log: false
+    options:
+    - 96
+    - 128
+    - 192
+    - 256
+    type: categorical
+    values:
+    - 96
+    - 128
+    - 192
+    - 256
+  epoch:
+    high: 60
+    log: false
+    low: 10
+    type: int
+    values:
+    - 10
+    - 20
+    - 30
+    - 40
+    - 50
+    - 60
+  freeze_backbone_epochs:
+    high: 10
+    log: false
+    low: 0
+    type: int
+    values:
+    - 0
+    - 2
+    - 5
+    - 7
+    - 10
+  grad_clip_norm:
+    high: 5.0
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.5
+    - 1.0
+    - 2.0
+    - 3.0
+    - 5.0
+  label_smoothing:
+    high: 0.2
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+  mixup_alpha:
+    high: 0.6
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+    - 0.6
+  normalize_intensity:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  num_heads:
+    log: false
+    options:
+    - '[3,6,12,24]'
+    - '[4,8,16,32]'
+    - '[2,4,8,16]'
+    type: categorical
+    values:
+    - '[3,6,12,24]'
+    - '[4,8,16,32]'
+    - '[2,4,8,16]'
+  onecycle.max_lr_multiplier:
+    high: 25.0
+    log: false
+    low: 5.0
+    type: float
+    values:
+    - 5.0
+    - 10.0
+    - 15.0
+    - 20.0
+    - 25.0
+  optim.lr:
+    high: 0.005
+    log: true
+    low: 1.0e-05
+    type: float
+    values:
+    - 1.0e-05
+    - 5.0e-05
+    - 0.0001
+    - 0.0002
+    - 0.0005
+    - 0.001
+    - 0.002
+    - 0.005
+  optim.name:
+    log: false
+    options:
+    - adam
+    - adamw
+    - sgd
+    type: categorical
+    values:
+    - adam
+    - adamw
+    - sgd
+  optim.weight_decay:
+    high: 0.01
+    log: true
+    low: 1.0e-06
+    type: float
+    values:
+    - 1.0e-06
+    - 1.0e-05
+    - 5.0e-05
+    - 0.0001
+    - 0.0005
+    - 0.001
+    - 0.005
+    - 0.01
+  patch_size:
+    log: false
+    options:
+    - 4
+    - 8
+    - 16
+    type: categorical
+    values:
+    - 4
+    - 8
+    - 16
+  path_dropout:
+    high: 0.4
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.4
+  patience:
+    high: 20
+    log: false
+    low: 5
+    type: int
+    values:
+    - 5
+    - 7
+    - 10
+    - 12
+    - 15
+    - 20
+  plateau.factor:
+    high: 0.7
+    log: false
+    low: 0.1
+    type: float
+    values:
+    - 0.1
+    - 0.2
+    - 0.3
+    - 0.5
+    - 0.7
+  plateau.patience:
+    high: 10
+    log: false
+    low: 3
+    type: int
+    values:
+    - 3
+    - 5
+    - 7
+    - 10
+  progressive_resizing:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  scale_intensity:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  scheduler:
+    log: false
+    options:
+    - cosine
+    - onecycle
+    - plateau
+    - warmup_cosine
+    - null
+    type: categorical
+    values:
+    - cosine
+    - onecycle
+    - plateau
+    - warmup_cosine
+    - null
+  stochastic_depth_prob:
+    high: 0.3
+    log: false
+    low: 0.0
+    type: float
+    values:
+    - 0.0
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.3
+  test_time_augmentation:
+    log: false
+    options:
+    - true
+    - false
+    type: categorical
+    values:
+    - true
+    - false
+  warmup.warmup_epochs:
+    high: 15
+    log: false
+    low: 3
+    type: int
+    values:
+    - 3
+    - 5
+    - 7
+    - 10
+    - 15
+  window_size:
+    log: false
+    options:
+    - 7
+    - 8
+    - 14
+    - 16
+    type: categorical
+    values:
+    - 7
+    - 8
+    - 14
+    - 16
+tuner_configs:
+  pytorch_optuna:
+    direction: maximize
+    n_trials: 20
+    random_state: 42
+    scoring: f1
+    timeout: 7200
+    val_size: 0.2
