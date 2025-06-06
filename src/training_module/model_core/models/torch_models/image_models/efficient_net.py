@@ -10,8 +10,9 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 
 @ModelRegistry.register("efficient_net_image")
-class ThyroidEfficientNetModel(PyTorchModel):
+class EfficientImageNetModel(PyTorchModel):
     name = "efficient_net_image"
+    _data_adapter_type = "image"
 
     def __init__(
         self,

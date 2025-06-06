@@ -10,8 +10,9 @@ from src.training_module.model_core.model_registry import ModelRegistry
 
 
 @ModelRegistry.register("se_resnet_image")
-class ThyroidSEResNetModel(PyTorchModel):
+class SEResNetImageModel(PyTorchModel):
     name = "se_resnet_image"
+    _data_adapter_type = "image"
 
     def __init__(
         self,

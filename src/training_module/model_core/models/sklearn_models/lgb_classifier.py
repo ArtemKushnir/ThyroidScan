@@ -12,4 +12,6 @@ class LightGBMModel(SklearnModel):
 
     def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True) -> None:
         super().__init__(model_params, is_binary)
+        if "verbose" not in self.model_params:
+            self.model_params["verbose"] = -1
         self.model = LGBMClassifier(**self.model_params)

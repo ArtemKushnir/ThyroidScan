@@ -8,10 +8,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from torch.utils.data import DataLoader
 
-from src.training_module import root_loger
 from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter
 from src.training_module.model_core.models.torch_models.criterions import BINARY_CRITERION, MULTICLASS_CRITERION
 from src.training_module.model_core.models.torch_models.optimizers import OPTIMIZER
@@ -29,8 +36,8 @@ class BaseTuner(abc.ABC):
 
 
 class BaseModel(abc.ABC):
-    DEFAULT_BINARY_MODEL_DIR = "training_module/pipeline_artifacts/model_artifacts/binary_classification"
-    DEFAULT_MULTICLASS_MODEL_DIR = "training_module/pipeline_artifacts/model_artifacts/multiclass_classification"
+    DEFAULT_BINARY_MODEL_DIR = "../pipeline_artifacts/model_artifacts/binary_classification"
+    DEFAULT_MULTICLASS_MODEL_DIR = "../pipeline_artifacts/model_artifacts/multiclass_classification"
     name = ""
 
     def __init__(self, model_params: Optional[dict[str, Any]] = None, is_binary: bool = True):
@@ -71,9 +78,29 @@ class BaseModel(abc.ABC):
     def save(self, directory: str = None) -> None:
         pass
 
+    @staticmethod
     @abc.abstractmethod
-    def load(self, directory: str = None) -> "BaseModel":
+    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
         pass
+
+    @staticmethod
+    def get_model(is_binary: bool, model_name: str, directory: str = None) -> "BaseModel":
+        from src.training_module.model_core.model_registry import ModelRegistry
+
+        model_instance = ModelRegistry.get_model(model_name)
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
+        if isinstance(model_instance, SklearnModel):
+            if not os.path.isfile(f"{directory}/{model_name}.pkl"):
+                return model_instance
+            return SklearnModel.load(is_binary=is_binary, model_name=model_name, directory=directory)
+        elif isinstance(model_instance, PyTorchModel):
+            if not os.path.isfile(f"{directory}/{model_name}.pth"):
+                return model_instance
+            return PyTorchModel.load(is_binary=is_binary, model_name=model_name, directory=directory).get_clone_model(
+                {}
+            )
+        raise ValueError("Unknown model type")
 
     def evaluate(self, data_adapter: BaseDataAdapter) -> dict[str, float]:
         test_data = data_adapter.data
@@ -81,7 +108,7 @@ class BaseModel(abc.ABC):
             X_test, y_test = test_data
             y_pred = self.predict(data_adapter)
 
-            if len(np.unique(y_test)) == 2:
+            if data_adapter.is_bin_classification:
                 metrics = {
                     "accuracy": accuracy_score(y_test, y_pred),
                     "precision": precision_score(y_test, y_pred),
@@ -90,7 +117,7 @@ class BaseModel(abc.ABC):
                 }
                 if hasattr(self.model, "predict_proba"):
                     y_proba = self.predict_proba(data_adapter)
-                    metrics["roc_auc"] = roc_auc_score(y_test, y_proba[:, 1] if y_proba.ndim > 1 else y_proba)
+                    # metrics["roc_auc"] = roc_auc_score(y_test, y_proba[:, 1] if y_proba.ndim > 1 else y_proba)
             else:
                 metrics = {
                     "accuracy": accuracy_score(y_test, y_pred),
@@ -112,6 +139,7 @@ class BaseModel(abc.ABC):
 
 
 class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
+    _data_adapter_type = "sklearn"
 
     def fit(self, train_adapter: BaseDataAdapter, test_adapter: Optional[BaseDataAdapter] = None) -> "SklearnModel":
         X, y = train_adapter.data
@@ -119,13 +147,6 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
             raise ValueError("Model has not been initialized")
 
         self.model.fit(X, y)
-        train_metrics = self.evaluate(train_adapter)
-        log = "".join([f"{key}: {value}\n" for key, value in train_metrics.items()])
-        root_loger.info(f"Training metrics\n{log}")
-        if test_adapter is not None:
-            val_metrics = self.evaluate(test_adapter)
-            log = "".join([f"{key}: {value}\n" for key, value in val_metrics.items()])
-            root_loger.info(f"{self.name}\nVal metrics\n{log}")
         return self
 
     def predict(self, data_adapter: BaseDataAdapter) -> np.ndarray:
@@ -142,7 +163,17 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         return self.model.predict_proba(X)
 
     def get_clone_model(self, params: dict[str, Any]) -> Any:
-        pass
+        if self.model is None:
+            raise ValueError("Model has not been initialized")
+
+        from sklearn.base import clone
+
+        new_model = clone(self.model)
+
+        if params:
+            new_model.set_params(**params)
+
+        return new_model
 
     def _update_params(self, params: dict[str, Any]) -> None:
         self.model.set_params(**params)
@@ -155,12 +186,13 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         with open(config_path, "wb") as f:
             pickle.dump(self, f)
 
-    def load(self, directory: str = None) -> "BaseModel":
-        if directory is None:
-            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
-        config_path = os.path.join(directory, f"{type(self).name}.pkl")
+    @staticmethod
+    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
+        config_path = os.path.join(directory, f"{model_name}.pkl")
         with open(config_path, "rb") as f:
-            return pickle.load(f)
+            loaded_model = pickle.load(f)
+
+        return loaded_model
 
 
 class PyTorchModel(BaseModel, abc.ABC):
@@ -171,27 +203,27 @@ class PyTorchModel(BaseModel, abc.ABC):
         if model_params is None:
             self.model_params = {
                 "epoch": 10,
-                "optim": {"name": "sgd", "lr": 0.001},
-                "criterion": {"name": "bce_with_logits"},
+                "optim": {"name": "adam", "lr": 0.0001},
+                "criterion": {"name": "focal"},
             }
         else:
             self.model_params = model_params
 
             if "optim" not in self.model_params:
-                self.model_params["optim"] = {"name": "sgd", "lr": 0.001}
+                self.model_params["optim"] = {"name": "adam", "lr": 0.0001}
+            elif "name" not in self.model_params["optim"]:
+                self.model_params["optim"]["name"] = "adam"
 
             if "epoch" not in self.model_params:
                 self.model_params["epoch"] = 10
 
             if "criterion" not in self.model_params:
-                self.model_params["criterion"] = {"name": "bce_with_logits"}
+                self.model_params["criterion"] = {"name": "focal"}
 
         optimizer_dict = self.model_params["optim"]
         criterion_dict = self.model_params["criterion"]
-
         optimizer_name = optimizer_dict["name"]
         criterion_name = criterion_dict["name"]
-
         if optimizer_name not in OPTIMIZER:
             raise ValueError(
                 f"Optimizer {optimizer_name} not supported. Available optimizers: {list(OPTIMIZER.keys())}"
@@ -221,7 +253,7 @@ class PyTorchModel(BaseModel, abc.ABC):
     def _initialize_preprocessing(self) -> list[Callable]:
         return []
 
-    def _prepare_input(self, batch_data: Any) -> tuple[torch.Tensor, torch.Tensor]:
+    def _prepare_input(self, batch_data: Any) -> tuple[Any, torch.Tensor]:
         if isinstance(batch_data, dict):
             X = batch_data["pixels"].to(self.device)
             y = batch_data["label"].to(self.device) if "label" in batch_data else torch.tensor([])
@@ -244,10 +276,10 @@ class PyTorchModel(BaseModel, abc.ABC):
 
         self.model = self.model.to(self.device)
 
-        optimizer = self.optimizer(self.model.parameters(), **self.model_params["optim"])
+        optim_params = dict(filter(lambda item: item[0] != "name", self.model_params["optim"].items()))
+        optimizer = self.optimizer(self.model.parameters(), **optim_params)
         criterion = self.criterion()
         epochs = self.model_params.get("epoch", 10)
-
         for epoch in range(epochs):
             train_loss = self.train_loop(train_loader, self.model, criterion, optimizer)
 
@@ -265,9 +297,9 @@ class PyTorchModel(BaseModel, abc.ABC):
                     self.history["metrics"][metric_name] = []
                 self.history["metrics"][metric_name].append(metric_value)
 
-            print(f"Epoch {epoch + 1}/{epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
-            for metric_name, metric_value in metrics.items():
-                print(f" - {metric_name}: {metric_value:.4f}")
+            # print(f"Epoch {epoch + 1}/{epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
+            # for metric_name, metric_value in metrics.items():
+            #     print(f" - {metric_name}: {metric_value:.4f}")
 
         return self
 
@@ -292,11 +324,7 @@ class PyTorchModel(BaseModel, abc.ABC):
             loss.backward()
             optimizer.step()
 
-            running_loss += loss.item() * X.size(0)
-
-            if batch % 100 == 0:
-                current = batch * len(X)
-                print(f"loss: {loss.item():>7f}  [{current:>5d}/{size:>5d}]")
+            running_loss += loss.item()
 
         return running_loss / size
 
@@ -349,7 +377,7 @@ class PyTorchModel(BaseModel, abc.ABC):
                     y_loss = y
 
                 loss = criterion(outputs, y_loss)
-                running_loss += loss.item() * X.size(0)
+                running_loss += loss.item()
 
                 if self.is_binary:
                     preds = torch.sigmoid(outputs) > 0.5
@@ -375,10 +403,10 @@ class PyTorchModel(BaseModel, abc.ABC):
 
             try:
                 proba = self.predict_proba(data_adapter)
-                if proba.shape[1] == 1:
-                    metrics["roc_auc"] = roc_auc_score(all_targets, proba)
-                else:
-                    metrics["roc_auc"] = roc_auc_score(all_targets, proba[:, 1])
+                # if proba.shape[1] == 1:
+                #     metrics["roc_auc"] = roc_auc_score(all_targets, proba)
+                # else:
+                #     metrics["roc_auc"] = roc_auc_score(all_targets, proba[:, 1])
             except:
                 pass
         else:
@@ -409,36 +437,32 @@ class PyTorchModel(BaseModel, abc.ABC):
         return clone
 
     def _update_params(self, params: dict[str, Any]) -> None:
+        """
+        Update model parameters safely handling both nested and flat parameter structures.
+
+        Args:
+            params: Dictionary of parameters to update
+        """
         for key, value in params.items():
             if key == "optim":
-                for opt_key, opt_value in value.items():
-                    self.model_params["optim"][opt_key] = opt_value
+                if isinstance(value, dict):
+                    if "optim" not in self.model_params:
+                        self.model_params["optim"] = {}
+
+                    for opt_key, opt_value in value.items():
+                        self.model_params["optim"][opt_key] = opt_value
+                else:
+                    self.model_params["optim"]["name"] = value
+            elif key == "criterion":
+                criterion_name = value["name"]
+                criterion_dict = BINARY_CRITERION if self.is_binary else MULTICLASS_CRITERION
+                if criterion_name in criterion_dict:
+                    self.criterion_name = criterion_name
+                    self.criterion = criterion_dict[criterion_name]
+                else:
+                    raise ValueError(f"Criterion {criterion_name} not supported")
             else:
                 self.model_params[key] = value
-
-        if "optimizer" in params:
-            optimizer_name = params["optimizer"]
-            if optimizer_name in OPTIMIZER:
-                self.optimizer_name = optimizer_name
-                self.optimizer = OPTIMIZER[optimizer_name]
-            else:
-                raise ValueError(f"Optimizer {optimizer_name} not supported")
-
-        if "criterion" in params:
-            criterion_name = params["criterion"]
-            criterion_dict = BINARY_CRITERION if self.is_binary else MULTICLASS_CRITERION
-            if criterion_name in criterion_dict:
-                self.criterion_name = criterion_name
-                self.criterion = criterion_dict[criterion_name]
-            else:
-                raise ValueError(f"Criterion {criterion_name} not supported")
-
-        if "is_binary" in params:
-            self.is_binary = params["is_binary"]
-            criterion_dict = BINARY_CRITERION if self.is_binary else MULTICLASS_CRITERION
-            if self.criterion_name not in criterion_dict:
-                self.criterion_name = next(iter(criterion_dict.keys()))
-            self.criterion = criterion_dict[self.criterion_name]
 
     def save(self, directory: str = None) -> None:
         state_dict = {
@@ -461,30 +485,31 @@ class PyTorchModel(BaseModel, abc.ABC):
     def _get_additional_state(self) -> dict[str, Any]:
         return {}
 
-    def load(self, directory: str = None) -> "PyTorchModel":
-        if directory is None:
-            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
-        config_path = os.path.join(directory, f"{type(self).name}.pth")
-        checkpoint = torch.load(config_path, map_location=self.device)
+    @staticmethod
+    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
+        from src.training_module.model_core.model_registry import ModelRegistry
 
-        self.model_params = checkpoint["model_params"]
-        self.optimizer_name = checkpoint["optimizer_name"]
-        self.criterion_name = checkpoint["criterion_name"]
-        self.is_binary = checkpoint["is_binary"]
+        model_instance = ModelRegistry.get_model(model_name)
+        model_instance.is_binary = is_binary
+        if isinstance(model_instance, PyTorchModel):
+            config_path = os.path.join(directory, f"{model_name}.pth")
+            checkpoint = torch.load(config_path, map_location=model_instance.device)
 
-        self.optimizer = OPTIMIZER[self.optimizer_name]
-        criterion_dict = BINARY_CRITERION if self.is_binary else MULTICLASS_CRITERION
-        self.criterion = criterion_dict[self.criterion_name]
+            model_instance.model_params = checkpoint["model_params"]
+            model_instance.optimizer_name = checkpoint["optimizer_name"]
+            model_instance.criterion_name = checkpoint["criterion_name"]
+            model_instance.is_binary = checkpoint["is_binary"]
 
-        self._load_additional_state(checkpoint)
+            model_instance.optimizer = OPTIMIZER[model_instance.optimizer_name]
+            criterion_dict = BINARY_CRITERION if model_instance.is_binary else MULTICLASS_CRITERION
+            model_instance.criterion = criterion_dict[model_instance.criterion_name]
 
-        if self.model is None:
-            self.model = self._create_model()
+            model_instance._load_additional_state(checkpoint)
 
-        self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.model = self.model.to(self.device)
+            model_instance.model.load_state_dict(checkpoint["model_state_dict"])
+            model_instance.model = model_instance.model.to(model_instance.device)
 
-        return self
+        return model_instance
 
     def _load_additional_state(self, checkpoint: dict[str, Any]) -> None:
         pass

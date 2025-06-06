@@ -207,7 +207,7 @@ class EfficientNetThyroid(nn.Module):
     def __init__(
         self,
         img_channels: int = 1,
-        num_statistical_features: int = 10,
+        num_statistical_features: int = 100,
         num_classes: int = 1,
         model_variant: str = "b0",
         pretrained: bool = True,
