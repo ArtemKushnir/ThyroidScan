@@ -43,8 +43,9 @@ class Cropper(BaseEstimator, TransformerMixin):
         if not isinstance(image_list, list):
             raise TypeError("A list of images was expected.")
 
+        copy_list = deepcopy(image_list)
         cropped_list = []
-        for image in image_list:
+        for image in copy_list:
             image = self._validate_image(image)
             cropped_list.extend(self._crop_image(image))
 
@@ -174,7 +175,7 @@ class Cropper(BaseEstimator, TransformerMixin):
         Write cropped image into file.
         """
         if image.cropped_image is None:
-            raise NotFittedError("")
+            raise NotFittedError("Should use cropper before.")
         cropped_image_path = "cropped_" + image.name
         cv2.imwrite(cropped_image_path, image.cropped_image)
 
