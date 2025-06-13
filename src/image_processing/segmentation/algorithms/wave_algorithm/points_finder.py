@@ -77,13 +77,13 @@ class WavePointFinder(PointFinder):
             raise ValueError("Input must be a 2D grayscale image.")
 
     @staticmethod
-    def _validate_params(points_number: int, window_size: int, step: int):
+    def _validate_params(points_number: int, window_size: int, step: int) -> None:
         if not isinstance(points_number, int):
             raise TypeError("Points number must be int.")
         if not isinstance(window_size, int):
             raise TypeError("Window size must be int.")
         if not isinstance(step, int):
-            raise TypeError("Window size must be int.")
+            raise TypeError("Step must be int.")
         if points_number <= 0:
             raise ValueError("Points number must be positive.")
         if window_size <= 0:
