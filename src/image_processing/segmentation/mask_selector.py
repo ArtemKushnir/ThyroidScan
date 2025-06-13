@@ -22,13 +22,11 @@ class MaskSelector(BaseEstimator, TransformerMixin):
     to select masks that are most similar to a reference set of top masks.
     """
 
-    def __init__(self, mask_number: int = 10, use_knn: bool = True):
+    def __init__(self, mask_number: int = 10):
         """
         :param mask_number: Number of masks to retain for each image.
-        :param use_knn: Whether to use KNN-based similarity to select masks.
         """
         self.mask_number = mask_number
-        self.use_knn = use_knn
         self._scaler = StandardScaler()
         self._knn = NearestNeighbors(n_neighbors=1)
         self._reference_features: Optional[NDArray] = None
@@ -70,10 +68,9 @@ class MaskSelector(BaseEstimator, TransformerMixin):
 
         self._reference_features = np.array(all_features)
 
-        if self.use_knn:
-            self._scaler.fit(self._reference_features)
-            scaled_features = self._scaler.transform(self._reference_features)
-            self._knn.fit(scaled_features)
+        self._scaler.fit(self._reference_features)
+        scaled_features = self._scaler.transform(self._reference_features)
+        self._knn.fit(scaled_features)
 
         return self
 

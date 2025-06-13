@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Any
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.exceptions import NotFittedError
 
 from src.image_data.image_data import Image
 from src.image_processing.segmentation.algorithms.segmentation_interfaces import PointFinder, SegmentationAlgorithm
@@ -9,7 +10,7 @@ from src.image_processing.segmentation.algorithms.segmentation_interfaces import
 
 class ImageSegmenter(BaseEstimator, TransformerMixin):
     """
-     A transformer that performs image segmentation based on detected points of interest.
+    A segmenter that performs image segmentation based on detected points of interest.
 
     This class is designed to work as part of a scikit-learn pipeline. It takes a list
     of images, uses a point-finding strategy to locate points of interest within each
@@ -50,12 +51,17 @@ class ImageSegmenter(BaseEstimator, TransformerMixin):
         """
         if not isinstance(image_list, list):
             raise TypeError("A list of images was expected.")
+        for i, item in enumerate(image_list):
+            if not isinstance(item, Image):
+                raise TypeError("Elements of list must be Image objects.")
+
         copy_list = deepcopy(image_list)
 
         for image in copy_list:
-            if image.cropped_image is not None:
-                points = self.point_finder.find_points(image.cropped_image)
-                image.segmented_masks = [self.algorithm.segment(image.cropped_image, point) for point in points]
-            else:
-                raise ValueError("Cropped image can't be None.")
+            if image.cropped_image is None:
+                raise NotFittedError("Should use cropper before.")
+
+            points = self.point_finder.find_points(image.cropped_image)
+            image.segmented_masks = [self.algorithm.segment(image.cropped_image, point) for point in points]
+
         return copy_list
