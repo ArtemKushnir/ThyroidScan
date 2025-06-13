@@ -10,9 +10,9 @@ import numpy as np
 from src.image_data.image_data import Image
 
 
-class XMLHandler:
+class DDTILoader:
     """
-    Handles XML files containing image annotations and metadata, and generates corresponding mask images.
+    Loader for DDTI (Thyroid Ultrasound Images) dataset with images and xml files.
 
     This class parses XML files to extract information such as annotation polygons (in SVG format),
     patient metadata (e.g., age, sex, TIRADS score), and links it with source images to create
@@ -21,7 +21,7 @@ class XMLHandler:
 
     def __init__(self, xml_dir: str, images_dir: str, only_with_tirads: bool = False) -> None:
         """
-        Initializes the handler with directories containing XML files and source images.
+        Initializes the loader with directories containing XML files and source images.
 
         :param xml_dir: Path to the directory containing XML annotation files.
         :param images_dir: Path to the directory containing source image files.
@@ -33,7 +33,7 @@ class XMLHandler:
         self.images_dir = Path(images_dir)
         self.only_with_tirads = self._check_label(only_with_tirads)
 
-    def create_images_with_masks(self) -> list[Image]:
+    def load_dataset(self) -> list[Image]:
         """
         Parses all XML files in the directory and creates a list of image objects with associated masks and metadata.
 

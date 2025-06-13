@@ -23,8 +23,8 @@ def split_files_by_type(data_dir: str, xml_dir: str = "xml_files", images_dir: s
 
 
 if __name__ == "__main__":
-    data_dir = "data"
-    xml_dir = "xml_files"
-    images_dir = "images"
+    data_dir = "../data/DDTI/data"
+    xml_dir = "../data/DDTI/xml_files"
+    images_dir = "../data/DDTI/images"
 
     split_files_by_type(data_dir, xml_dir, images_dir)
