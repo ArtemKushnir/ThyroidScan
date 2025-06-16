@@ -16,16 +16,16 @@ class TestBUSLoader:
     def setup_test_dir(self):
         tmp_dir = Path(tempfile.mkdtemp())
 
-        (tmp_dir / "images").mkdir()
-        (tmp_dir / "masks").mkdir()
+        (tmp_dir / "Images").mkdir()
+        (tmp_dir / "Masks").mkdir()
 
         for i in range(1, 4):
             img = np.random.randint(0, 256, (100, 100), dtype=np.uint8)
-            cv2.imwrite(str(tmp_dir / "images" / f"bus_{i:04d}.png"), img)
+            cv2.imwrite(str(tmp_dir / "Images" / f"bus_{i:04d}.png"), img)
 
             mask = np.zeros((100, 100), dtype=np.uint8)
             mask[20:80, 20:80] = 255
-            cv2.imwrite(str(tmp_dir / "masks" / f"mask_{i:04d}.png"), mask)
+            cv2.imwrite(str(tmp_dir / "Masks" / f"mask_{i:04d}.png"), mask)
 
         csv_data = """ID,Histology,Pathology,BIRADS,Device
 bus_0001,Benign,Fibroadenoma,2,GE
@@ -40,8 +40,8 @@ bus_0003,Benign,Cyst,3,Philips"""
     def test_init_valid_dir(self, setup_test_dir):
         loader = BUSLoader(str(setup_test_dir))
         assert loader.root_path == setup_test_dir
-        assert loader.image_dir == setup_test_dir / "images"
-        assert loader.mask_dir == setup_test_dir / "masks"
+        assert loader.image_dir == setup_test_dir / "Images"
+        assert loader.mask_dir == setup_test_dir / "Masks"
         assert loader.csv_path == setup_test_dir / "bus_data.csv"
         assert len(loader.metadata) == 3
 
@@ -61,14 +61,14 @@ bus_0003,Benign,Cyst,3,Philips"""
             assert img.metadata is not None
 
     def test_missing_image(self, setup_test_dir):
-        (setup_test_dir / "images" / "bus_0001.png").unlink()
+        (setup_test_dir / "Images" / "bus_0001.png").unlink()
 
         loader = BUSLoader(str(setup_test_dir))
         images = loader.load_dataset()
         assert len(images) == 2
 
     def test_missing_mask(self, setup_test_dir):
-        (setup_test_dir / "masks" / "mask_0002.png").unlink()
+        (setup_test_dir / "Masks" / "mask_0002.png").unlink()
 
         loader = BUSLoader(str(setup_test_dir))
         with patch("builtins.print") as mock_print:
@@ -92,7 +92,7 @@ bus_0001,Benign,Fibroadenoma,GE"""
 
     def test_load_image(self, setup_test_dir):
         loader = BUSLoader(str(setup_test_dir))
-        img_path = setup_test_dir / "images" / "bus_0001.png"
+        img_path = setup_test_dir / "Images" / "bus_0001.png"
         img = loader._load_image(img_path)
 
         assert isinstance(img, np.ndarray)
