@@ -10,9 +10,9 @@ from src.image_data.image_data import Image
 from src.training_module.feature_engineering_layer.plugin_registry import TransformRegistry
 from src.training_module.feature_engineering_layer.plugins.transform_plugin import TransformPlugin
 
-DEFAULT_CONFIG_DIR = "training_module/config/plugin_config"
+DEFAULT_CONFIG_DIR = "/home/kush/machine_learning/ThyroidScan/src/training_module/config/plugin_config/"
 
-DEFAULT_STATE_DIR = "training_module/pipeline_artifacts/plugin_artifacts"
+DEFAULT_STATE_DIR = "/home/kush/machine_learning/ThyroidScan/src/training_module/pipeline_artifacts/plugin_artifacts/"
 
 
 class TransformPipeline:
@@ -81,7 +81,7 @@ class TransformPipeline:
             json.dump(config, f)
 
     @classmethod
-    def load_config(cls, directory: str = DEFAULT_STATE_DIR) -> "TransformPipeline":
+    def load_config(cls, directory: str = DEFAULT_CONFIG_DIR) -> "TransformPipeline":
         config_path = os.path.join(directory, "pipeline_plugin_config.json")
         with open(config_path, "r") as f:
             config = json.load(f)
