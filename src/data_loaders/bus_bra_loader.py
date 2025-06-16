@@ -14,8 +14,8 @@ class BUSLoader:
 
     Expected directory structure:
     - root_dir/
-        - images/
-        - masks/
+        - Images/
+        - Masks/
         - bus_data.csv
 
     :param root_dir: Path to the root directory containing the dataset.
@@ -32,8 +32,8 @@ class BUSLoader:
         :raises NotADirectoryError: If root path isn't a directory.
         """
         self.root_path = self._validate_root_dir(root_dir)
-        self.image_dir = self._validate_subdir("images")
-        self.mask_dir = self._validate_subdir("masks")
+        self.image_dir = self._validate_subdir("Images")
+        self.mask_dir = self._validate_subdir("Masks")
         self.csv_path = self._validate_file("bus_data.csv")
         self.metadata = self._load_metadata()
 
@@ -72,7 +72,7 @@ class BUSLoader:
         """
         Validate subdirectory exists.
 
-        :param dir_name: Subdirectory name (e.g. 'images').
+        :param dir_name: Subdirectory name (e.g. 'Images').
         :return: Validated Path object.
         """
         path = self.root_path / dir_name
