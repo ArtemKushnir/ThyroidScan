@@ -34,8 +34,7 @@ from src.utils.logger import CustomLogger
 
 @dataclass
 class Config:
-    xml_path: str = "/home/kush/machine_learning/ThyroidScan/src/data_processing/xml_files"
-    images_path: str = "/home/kush/machine_learning/ThyroidScan/src/data_processing/images"
+    loader: Any
     models: Optional[list[str]] = None
     transform_plugins: list[tuple[str, dict[str, Any]]] = field(
         default_factory=lambda: [
@@ -389,24 +388,27 @@ class Visualizer:
 
 
 class ImageProcessor:
-    def __init__(self, xml_path: str, images_path: str):
-        self.xml_path = xml_path
-        self.images_path = images_path
+    def __init__(self, loader: Any):
+        self.loader = loader
 
     def get_images(self) -> list[Image]:
-        loader = DDTILoader(self.xml_path, self.images_path)
-        image_list = loader.load_dataset()
+
+        image_list = self.loader.load_dataset()
 
         pipeline = Pipeline(
             [
-                ("cropper", Cropper()),
-                ("segmenter", ImageSegmenter(WaveSegmenter(18, 4), WavePointFinder(32, 83, 36))),
+                ("segmenter", ImageSegmenter(WaveSegmenter(17, 4), WavePointFinder(32, 80, 35))),
                 ("selector", MaskSelector(10)),
                 ("extractor", FeatureExtractor()),
             ]
         )
-
-        return pipeline.fit_transform(image_list)
+        images = pipeline.fit_transform(image_list)
+        for image in images:
+            if image.metadata["pathology"] == "malignant":
+                image.metadata["target"] = 1
+            else:
+                image.metadata["target"] = 0
+        return images
 
 
 class TrainingSystem(Subject):
@@ -513,7 +515,7 @@ class MLSystemFacade:
         if config.models is None:
             config.models = list(ModelRegistry._models.keys())
         self.config = config
-        self.image_processor = ImageProcessor(config.xml_path, config.images_path)
+        self.image_processor = ImageProcessor(config.loader)
         self.experiment_manager = ExperimentManager(config)
         self.visualizer = Visualizer(self.experiment_manager)
 
@@ -573,10 +575,12 @@ class MLSystemFacade:
 
 
 def main() -> None:
+    DATA_PATH = "/home/kush/machine_learning/ThyroidScan/src/data_processing/BUSBRA"
+
+    loader = BUSLoader(DATA_PATH)
     config = Config(
-        xml_path="/home/kush/machine_learning/ThyroidScan/src/data_processing/xml_files",
-        images_path="/home/kush/machine_learning/ThyroidScan/src/data_processing/images",
-        models=["dense_net_image"],
+        loader=loader,
+        models=["svm"],
         experiment_dir="experiments",
         target_metric="f1",
         tune_params=False,
@@ -594,7 +598,7 @@ def main() -> None:
     root_loger.info(f"Models are trained: {models}")
 
     # Use-case 3: model comparison
-    exp_id = ml_system.run_model_comparison_experiment("model_comparison_v2", save_plots=True)
+    exp_id = ml_system.run_model_comparison_experiment("bus_bra_expirement", save_plots=True)
     root_loger.info(f"The model comparison experiment is completed: {exp_id}")
 
     summary = ml_system.get_training_summary()
