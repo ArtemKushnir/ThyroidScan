@@ -434,7 +434,7 @@ class TrainingSystem(Subject):
         splitter = Splitter(images)
         return splitter.get_split_data()
 
-    def transform_image(self, is_update=True) -> None:
+    def transform_image(self, is_update: bool = True) -> None:
         self.notify("transformation_started", {})
         self.transform_pipeline.fit_transform(self.train_images)
         if is_update:
