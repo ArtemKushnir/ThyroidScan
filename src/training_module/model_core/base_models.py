@@ -17,6 +17,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.utils.validation import check_is_fitted
 from torch.utils.data import DataLoader
 
 from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter
@@ -36,8 +37,8 @@ class BaseTuner(abc.ABC):
 
 
 class BaseModel(abc.ABC):
-    DEFAULT_BINARY_MODEL_DIR = "../pipeline_artifacts/model_artifacts/binary_classification"
-    DEFAULT_MULTICLASS_MODEL_DIR = "../pipeline_artifacts/model_artifacts/multiclass_classification"
+    DEFAULT_BINARY_MODEL_DIR = "/home/kush/machine_learning/ThyroidScan/src/training_module/pipeline_artifacts/model_artifacts/binary_classification"
+    DEFAULT_MULTICLASS_MODEL_DIR = "/home/kush/machine_learning/ThyroidScan/src/training_module/pipeline_artifacts/model_artifacts/multiclass_classification"
     name = ""
     _data_adapter_type = ""
 
@@ -81,7 +82,7 @@ class BaseModel(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
+    def load(is_binary: bool, model_name: str, directory: Optional[str] = None) -> "BaseModel":
         pass
 
     @staticmethod
@@ -148,12 +149,17 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
             raise ValueError("Model has not been initialized")
 
         self.model.fit(X, y)
+        self.is_fitted = True
         return self
 
     def predict(self, data_adapter: BaseDataAdapter) -> np.ndarray:
         X, y = data_adapter.data
         if self.model is None:
             raise ValueError("Model has not been initialized")
+        if not self.is_fitted:
+            raise RuntimeError(
+                "This model instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
+            )
         y_pred = self.model.predict(X)
         return y_pred
 
@@ -161,6 +167,10 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         X, y = data_adapter.data
         if self.model is None:
             raise ValueError("Model has not been initialized")
+        if not self.is_fitted:
+            raise RuntimeError(
+                "This model instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
+            )
         return self.model.predict_proba(X)
 
     def get_clone_model(self, params: dict[str, Any]) -> Any:
@@ -180,6 +190,8 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
         self.model.set_params(**params)
 
     def save(self, directory: str = None) -> None:
+        if not self.is_fitted:
+            raise ValueError("Cannot save unfitted model. Train the model first using fit() method.")
         if directory is None:
             directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if self.is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
         config_path = os.path.join(directory, f"{type(self).name}.pkl")
@@ -188,11 +200,12 @@ class SklearnModel(BaseModel, BaseEstimator, ClassifierMixin, abc.ABC):
             pickle.dump(self, f)
 
     @staticmethod
-    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
+    def load(is_binary: bool, model_name: str, directory: Optional[str] = None) -> "BaseModel":
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
         config_path = os.path.join(directory, f"{model_name}.pkl")
         with open(config_path, "rb") as f:
             loaded_model = pickle.load(f)
-
         return loaded_model
 
 
@@ -487,8 +500,11 @@ class PyTorchModel(BaseModel, abc.ABC):
         return {}
 
     @staticmethod
-    def load(is_binary: bool, model_name: str, directory: str) -> "BaseModel":
+    def load(is_binary: bool, model_name: str, directory: Optional[str] = None) -> "BaseModel":
         from src.training_module.model_core.model_registry import ModelRegistry
+
+        if directory is None:
+            directory = BaseModel.DEFAULT_BINARY_MODEL_DIR if is_binary else BaseModel.DEFAULT_MULTICLASS_MODEL_DIR
 
         model_instance = ModelRegistry.get_model(model_name)
         model_instance.is_binary = is_binary

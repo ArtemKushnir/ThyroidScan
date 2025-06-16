@@ -25,7 +25,7 @@ class DenseNetHybridModel(PyTorchModel):
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 141,
+        num_statistical_features: int = 37,
         pretrained: bool = True,
     ):
         default_params = {

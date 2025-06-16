@@ -27,7 +27,7 @@ class EfficientNetHybridModel(PyTorchModel):
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 141,
+        num_statistical_features: int = 37,
         model_variant: str = "b0",
         pretrained: bool = True,
         mixup_alpha: float = 0.2,
