@@ -84,7 +84,7 @@ class DataAdapterRegistry:
 
 
 class BaseDataAdapter(abc.ABC):
-    """Convert list[Images] to the desired format"""
+    """Convert list[images] to the desired format"""
 
     def __init__(self, images: list[Image], is_bin_classification: bool = True, label: bool = True) -> None:
         self.images: list[Image] = images
@@ -93,8 +93,8 @@ class BaseDataAdapter(abc.ABC):
         self._data: Any = None
         self.label: bool = label
         self._check_constraint_images()
-        if label:
-            self._convert_image_labels()
+        # if label:
+        #     self._convert_image_labels()
 
     def prepare(self) -> None:
         self._prepare()

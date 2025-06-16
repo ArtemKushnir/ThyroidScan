@@ -24,7 +24,7 @@ class CustomNet(nn.Module):
         self,
         img_channels: int = 1,
         img_size: int = 224,
-        num_statistical_features: int = 37,
+        num_statistical_features: int = 100,
         num_classes: int = 1,
         dropout_rate: float = 0.5,
     ):
@@ -112,7 +112,7 @@ class CNNMLPModel(PyTorchModel):
         is_binary: bool = True,
         img_channels: int = 1,
         img_size: int = 64,
-        num_statistical_features: int = 37,
+        num_statistical_features: int = 100,
     ):
         super().__init__(model_params, is_binary)
 
