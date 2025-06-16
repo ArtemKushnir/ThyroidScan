@@ -10,7 +10,8 @@ from typing import Any, Optional
 import matplotlib.pyplot as plt
 from sklearn.pipeline import Pipeline
 
-from src.data_processing.xml_handler import XMLHandler
+from src.data_loaders.bus_bra_loader import BUSLoader
+from src.data_loaders.ddti_loader import DDTILoader
 from src.image_data.image_data import Image
 from src.image_processing.collecting_features.feature_extractor import FeatureExtractor
 from src.image_processing.preprocessing.cropper import Cropper
@@ -19,9 +20,9 @@ from src.image_processing.segmentation.algorithms.wave_algorithm.wave_segmenter 
 from src.image_processing.segmentation.image_segmenter import ImageSegmenter
 from src.image_processing.segmentation.mask_selector import MaskSelector
 from src.training_module import root_loger
-from src.training_module.data_layer.transform_pipeline import TransformPipeline
 from src.training_module.data_model_bridge.data_adapters import BaseDataAdapter, DataAdapterRegistry
 from src.training_module.feature_engineering_layer.plugin_registry import TransformRegistry
+from src.training_module.feature_engineering_layer.transform_pipeline import TransformPipeline
 from src.training_module.model_core.base_models import BaseModel, SklearnModel
 from src.training_module.model_core.model_registry import ModelRegistry
 from src.training_module.model_core.tunner_module.hyperparameter_selection_system import (
@@ -40,8 +41,9 @@ class Config:
         default_factory=lambda: [
             ("fill_nan", {}),
             ("standard_scaler", {}),
+            ("select_k_best", {"k": 100}),
             ("pca", {"n_components": 0.95}),
-            ("k_means", {"n_clusters": 2}),
+            ("k_means", {"n_clusters": 5}),
         ]
     )
     experiment_dir: str = "experiments"
@@ -130,7 +132,7 @@ class ModelComparisonExperiment(ExperimentStrategy):
     def run_experiment(self, training_system: "TrainingSystem", config: Config) -> dict[str, Any]:
         results = {}
         if config.models is None:
-            raise ValueError("No model to comprasion")
+            config.models = list(ModelRegistry._models.keys())
         for model_name in config.models:
             start_time = time.time()
             training_system.fit_model(model_name, tune_params=config.tune_params, is_update=config.is_update)
@@ -255,7 +257,7 @@ class Visualizer:
     def __init__(self, experiment_manager: ExperimentManager):
         self.experiment_manager = experiment_manager
         self.logger = CustomLogger(name="Visualizer", log_to_file=True, log_dir="logs/experiments").get_logger()
-        plt.style.use("seaborn-darkgrid")
+        plt.style.use("classic")
 
     def plot_model_comparison(self, experiment_id: str, target_metric: str = "f1", save_path: str = None) -> None:
         experiment = self.experiment_manager.get_experiment(experiment_id)
@@ -392,20 +394,19 @@ class ImageProcessor:
         self.images_path = images_path
 
     def get_images(self) -> list[Image]:
-        handler = XMLHandler(self.xml_path, self.images_path)
-        image_list = handler.create_images_with_masks()
+        loader = DDTILoader(self.xml_path, self.images_path)
+        image_list = loader.load_dataset()
 
         pipeline = Pipeline(
             [
                 ("cropper", Cropper()),
-                ("segmenter", ImageSegmenter(WaveSegmenter(), WavePointFinder())),
-                ("selector", MaskSelector()),
+                ("segmenter", ImageSegmenter(WaveSegmenter(18, 4), WavePointFinder(32, 83, 36))),
+                ("selector", MaskSelector(10)),
                 ("extractor", FeatureExtractor()),
             ]
         )
 
-        pipeline.fit(image_list)
-        return pipeline.transform(image_list)
+        return pipeline.fit_transform(image_list)
 
 
 class TrainingSystem(Subject):
@@ -428,14 +429,17 @@ class TrainingSystem(Subject):
 
     @staticmethod
     def split_image(images: list[Image]) -> tuple[list[Image], list[Image]]:
-        from src.training_module.data_layer.splitter import Splitter
+        from src.training_module.feature_engineering_layer.splitter import Splitter
 
         splitter = Splitter(images)
         return splitter.get_split_data()
 
-    def transform_image(self) -> None:
+    def transform_image(self, is_update: bool = True) -> None:
         self.notify("transformation_started", {})
         self.transform_pipeline.fit_transform(self.train_images)
+        if is_update:
+            self.transform_pipeline.save_config()
+            self.transform_pipeline.save_state()
         self.transform_pipeline.transform(self.test_images)
         self.notify("transformation_completed", {})
 
@@ -457,7 +461,7 @@ class TrainingSystem(Subject):
         test_adapter.prepare()
 
         if tune_params:
-            tuner_type = "sklearn_optuna" if isinstance(model, SklearnModel) else "pytorch_optuna"
+            tuner_type = "sklearn_gridsearch" if isinstance(model, SklearnModel) else "pytorch_optuna"
             self.tune_hyperparameters(model, train_adapter, tuner_type, is_update)
 
         model.fit(train_adapter, test_adapter)
@@ -572,7 +576,7 @@ def main() -> None:
     config = Config(
         xml_path="/home/kush/machine_learning/ThyroidScan/src/data_processing/xml_files",
         images_path="/home/kush/machine_learning/ThyroidScan/src/data_processing/images",
-        models=["swin_image", "resnet_image", "se_resnet_image", "efficient_net_image", "dense_net_image"],
+        models=["dense_net_image"],
         experiment_dir="experiments",
         target_metric="f1",
         tune_params=False,
@@ -595,7 +599,3 @@ def main() -> None:
 
     summary = ml_system.get_training_summary()
     root_loger.info("\nTraining Summary:", summary)
-
-
-if __name__ == "__main__":
-    main()

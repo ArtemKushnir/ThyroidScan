@@ -106,7 +106,7 @@ class SklearnGridSearchTuner(BaseTuner):
 
     def tune(self, model: Any, data: Any, param_space: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
         model = model.model
-        searcher = GridSearchCV(model, param_space, scoring=self.scoring, cv=self.cv, n_jobs=self.n_jobs, verbose=1)
+        searcher = GridSearchCV(model, param_space, scoring=self.scoring, cv=self.cv, n_jobs=self.n_jobs, verbose=3)
         X, y = data.data
         searcher.fit(X, y)
 
